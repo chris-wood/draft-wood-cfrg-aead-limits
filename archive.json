@@ -1,0 +1,1710 @@
+{
+  "magic": "E!vIA5L86J2I",
+  "timestamp": "2020-12-08T00:45:26.895189+00:00",
+  "repo": "cfrg/draft-irtf-cfrg-aead-limits",
+  "labels": [
+    {
+      "name": "bug",
+      "description": "Something isn't working",
+      "color": "d73a4a"
+    },
+    {
+      "name": "documentation",
+      "description": "Improvements or additions to documentation",
+      "color": "0075ca"
+    },
+    {
+      "name": "duplicate",
+      "description": "This issue or pull request already exists",
+      "color": "cfd3d7"
+    },
+    {
+      "name": "enhancement",
+      "description": "New feature or request",
+      "color": "a2eeef"
+    },
+    {
+      "name": "help wanted",
+      "description": "Extra attention is needed",
+      "color": "008672"
+    },
+    {
+      "name": "good first issue",
+      "description": "Good for newcomers",
+      "color": "7057ff"
+    },
+    {
+      "name": "invalid",
+      "description": "This doesn't seem right",
+      "color": "e4e669"
+    },
+    {
+      "name": "question",
+      "description": "Further information is requested",
+      "color": "d876e3"
+    },
+    {
+      "name": "wontfix",
+      "description": "This will not be worked on",
+      "color": "ffffff"
+    }
+  ],
+  "issues": [
+    {
+      "number": 4,
+      "id": "MDU6SXNzdWU2MTgxOTM2MjA=",
+      "title": "Document different v and q use cases",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/issues/4",
+      "state": "CLOSED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "`v` and `q` may vary depending on use case, and the bounds may simplify significantly depending on those bounds. For example, in QUIC, we assume `v >> q`, which lets us treat `v` as negligible compared to `v^2`.",
+      "createdAt": "2020-05-14T12:34:46Z",
+      "updatedAt": "2020-09-21T14:14:32Z",
+      "closedAt": "2020-09-21T14:14:32Z",
+      "comments": [
+        {
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "body": "That's not quite the assumption for QUIC, as our recommendations result in `v =~ q`.\r\n\r\nThe simplification for CCM was possible because `2vl` was large (or `2ql` was large, pick one).",
+          "createdAt": "2020-05-15T04:45:43Z",
+          "updatedAt": "2020-05-15T04:45:43Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Hmm... I'm now questioning this simplification. Let's assume `q=v`, yielding:\r\n\r\n```\r\nv + (2l * 2v)^2 <= p * 2^128\r\n=> v + (4lv)^2 <= p * 2^128\r\n=> v + 16l^2v^2 <= p * 2^128\r\n```\r\n\r\nIf `p = 2^-57` and `l=2^10`, then:\r\n\r\n```\r\nv + 16l^2v^2 <= 2^71\r\n=> v + 2^24v^2 <= 2^71\r\n```\r\n\r\nThe solution set to this inequality includes `v = 10000000`, which is fairly large in my opinion. That is, if we drop the first term (`v`), it seems like the bounds becomes much less tight. \r\n\r\nIf you agree with the above, how do you think we should proceed? I'm sort of leaning towards adjusting the QUIC bounds to include this term. \r\n",
+          "createdAt": "2020-05-15T13:27:33Z",
+          "updatedAt": "2020-05-15T13:27:33Z"
+        },
+        {
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "body": "The QUIC bounds are fine.  The final values are v=2^23.5 and q=2^23.  Plug those into the full advantage formula and you get:\r\n\r\n```js\r\nMath.log2(Math.pow(2, 23.5 - 128) + Math.pow(Math.pow(2, 11) * (Math.pow(2, 23.5) + Math.pow(2, 23)), 2) / Math.pow(2, 128))\r\n= -57.456893393672765\r\n```\r\n\r\nThat's a fair bit more than the target.\r\n\r\nNow, as to whether the simplification is generally useful, I don't know.  In your example v=1e7 (2^23.25, I assume is how you got there), the left hand side is 1677721600000010000000.  That extra 1e7 is hardly significant to the overall assessment.\r\n\r\n",
+          "createdAt": "2020-05-18T01:41:53Z",
+          "updatedAt": "2020-05-18T01:41:53Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "True -- I very much doubt it'll be a problem in practice. My concern lies in the message. That is, if a hypothetical QUIC connection were to count forgeries right up to the limit, and only update at that limit, an adversary gets an extra `v=1e7` attempts. \r\n\r\nThe forgery limit text currently only requires that endpoints update at some point before that limit. Maybe we can offer a RECOMMENDED value after which an update should be initiated?",
+          "createdAt": "2020-05-18T13:08:12Z",
+          "updatedAt": "2020-05-18T13:08:12Z"
+        },
+        {
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "body": "This is all against an advantage of 2^-57.  Going over and giving them 2^-56.8 is hardly going to be critical in protecting against a motivated attacker.  And any recommendation needs to be phrased in terms of round trip times rather than packet counts.",
+          "createdAt": "2020-05-19T01:37:24Z",
+          "updatedAt": "2020-05-19T01:37:24Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Hmm, I think we may disagree on that last point. The limits we're talking about here apply more directly to packet counts (assuming we're using the same definition for that). \r\n\r\nIn any case, I'll see if I can throw up a PR describing these different use cases shortly!",
+          "createdAt": "2020-05-19T01:48:47Z",
+          "updatedAt": "2020-05-19T01:48:47Z"
+        },
+        {
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "body": "I understand that, but the problem is that the cases that matter involve asking your counterpart to make a change, which takes time, not packets.",
+          "createdAt": "2020-05-19T02:26:15Z",
+          "updatedAt": "2020-05-19T02:26:15Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "I think has been overcome by events. Closing for now.",
+          "createdAt": "2020-09-21T14:14:32Z",
+          "updatedAt": "2020-09-21T14:14:32Z"
+        }
+      ]
+    },
+    {
+      "number": 10,
+      "id": "MDU6SXNzdWU2MjI1NzEzNzk=",
+      "title": "Add a reference to RFC 8645",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/issues/10",
+      "state": "OPEN",
+      "author": "smyshsv",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "Of course I can be biased here, but it seems to me that a reference to RFC 8645 can be very convenient in the draft, since it considers several ways to increase the bounds in some cases - such as hostile environments with adversaries with side-channel capabilities - particularily for GCM.",
+      "createdAt": "2020-05-21T15:15:33Z",
+      "updatedAt": "2020-05-22T20:38:30Z",
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "body": "No, that's a very good thing to add.  That is, the use of key updating is a great way to avoid exhaustion.  That's what TLS and QUIC do.  Let's try to work out how to fit a reference in.\r\n\r\nSeparately, I'd be interested in whether you think we need to do any analysis on the number of key updates that can be borne.  There is probably a limit, depending on how you update.  If the limit is practically unbounded (>2^128 would count, I think) as I expect, then that would be very good information.  However, if there are updating methods that are less robust, that would also be worth pointing at.",
+          "createdAt": "2020-05-22T02:11:55Z",
+          "updatedAt": "2020-05-22T02:11:55Z"
+        },
+        {
+          "author": "smyshsv",
+          "authorAssociation": "NONE",
+          "body": "Dear Martin,\n\nMany thanks for your reply.\n\n1. Regarding your draft, it seems that external re-keying techniques (in\nterms of RFC 8645) can be referred to in general, with a possible\nadditional reference to GCM-ACPKM as an internally re-keyed mode with less\nstrict bounds, see slide 27 in\nhttps://datatracker.ietf.org/meeting/97/materials/slides-97-cfrg-on-re-keying-mechanisms-for-extending-the-lifetime-of-symmetric-keys-01\n.\n\nAlso it can be worth mentioning that side channel attacks can also be taken\ninto account while considering limits of usage of a single key.\n\n2. Regarding the number of key updates I would ask Liliya (one of main\ncontributors to RFC 8645) to comment.\nIn a personal communication she has reminded me about the bounds in the\npaper https://cseweb.ucsd.edu/~mihir/papers/rekey.pdf - the bounds which\nalso take the frequency of re-keying into account.\n\nI believe that Liliya would be able to give several deeper comments, taking\ninto account her great expertise in this field.\n\nKind regards,\nStanislav\n\nOn Fri, 22 May 2020 at 05:12, Martin Thomson <notifications@github.com>\nwrote:\n\n> No, that's a very good thing to add. That is, the use of key updating is a\n> great way to avoid exhaustion. That's what TLS and QUIC do. Let's try to\n> work out how to fit a reference in.\n>\n> Separately, I'd be interested in whether you think we need to do any\n> analysis on the number of key updates that can be borne. There is probably\n> a limit, depending on how you update. If the limit is practically unbounded\n> (>2^128 would count, I think) as I expect, then that would be very good\n> information. However, if there are updating methods that are less robust,\n> that would also be worth pointing at.\n>\n> \u2014\n> You are receiving this because you authored the thread.\n> Reply to this email directly, view it on GitHub\n> <https://github.com/chris-wood/draft-wood-cfrg-aead-limits/issues/10#issuecomment-632439200>,\n> or unsubscribe\n> <https://github.com/notifications/unsubscribe-auth/AIH5DJFD7BWQWX6ORP6EA63RSXNPPANCNFSM4NG5MKBQ>\n> .\n>\n",
+          "createdAt": "2020-05-22T17:02:55Z",
+          "updatedAt": "2020-05-22T17:02:55Z"
+        },
+        {
+          "author": "smyshsv",
+          "authorAssociation": "NONE",
+          "body": "Dear Martin,\n\n1) More accurate security bounds specifically for GCM-ACPKM can be found in\nhttps://eprint.iacr.org/2017/697.pdf (see pages 14-15 for confidentiality\nand integrity). The link previously pointed by Stanislav contains the\nsecurity bound for another mode.\n\n2) The security of the externally re-keyed modes depends not on the number\nof key updates, but on the frequency of key updating and the total amount\nof processed data. The more frequent the key is updated, the more secure\n(but less efficient) the mode. The balance is needed in this case.\n\nRegarding the limit of key updates: unfortunately, we cannot say that this\nlimit is unbounded, and the security bound presented in\nhttps://cseweb.ucsd.edu/~mihir/papers/rekey.pdf (Theorem 4.1) confirms it.\nBut this bound is very simple and can be used to obtain less strict\nsecurity limits (for simplicity it is fair enough to assume the key update\nfunctions to be ideal). Although this bound is suitable for\nencryption modes only, I believe that the same theorem can be proven for\nAEAD modes (using the same technique).\n\nThere are different key updates constructions, with backward and forward\nsecurity, sequential and parallel, randomized and deterministic. All of\nthem have their advantages and disadvantages. RFC 8645 has a lot of\ndiscussion on this.\n\nBest regards,\nLiliya\n\n\n\u043f\u0442, 22 \u043c\u0430\u044f 2020 \u0433. \u0432 20:02, Stanislav V. Smyshlyaev <smyshsv@gmail.com>:\n\n> Dear Martin,\n>\n> Many thanks for your reply.\n>\n> 1. Regarding your draft, it seems that external re-keying techniques (in\n> terms of RFC 8645) can be referred to in general, with a possible\n> additional reference to GCM-ACPKM as an internally re-keyed mode with less\n> strict bounds, see slide 27 in\n> https://datatracker.ietf.org/meeting/97/materials/slides-97-cfrg-on-re-keying-mechanisms-for-extending-the-lifetime-of-symmetric-keys-01\n> .\n>\n> Also it can be worth mentioning that side channel attacks can also be\n> taken into account while considering limits of usage of a single key.\n>\n> 2. Regarding the number of key updates I would ask Liliya (one of main\n> contributors to RFC 8645) to comment.\n> In a personal communication she has reminded me about the bounds in the\n> paper https://cseweb.ucsd.edu/~mihir/papers/rekey.pdf - the bounds which\n> also take the frequency of re-keying into account.\n>\n> I believe that Liliya would be able to give several deeper comments,\n> taking into account her great expertise in this field.\n>\n> Kind regards,\n> Stanislav\n>\n> On Fri, 22 May 2020 at 05:12, Martin Thomson <notifications@github.com>\n> wrote:\n>\n>> No, that's a very good thing to add. That is, the use of key updating is\n>> a great way to avoid exhaustion. That's what TLS and QUIC do. Let's try to\n>> work out how to fit a reference in.\n>>\n>> Separately, I'd be interested in whether you think we need to do any\n>> analysis on the number of key updates that can be borne. There is probably\n>> a limit, depending on how you update. If the limit is practically unbounded\n>> (>2^128 would count, I think) as I expect, then that would be very good\n>> information. However, if there are updating methods that are less robust,\n>> that would also be worth pointing at.\n>>\n>> \u2014\n>> You are receiving this because you authored the thread.\n>> Reply to this email directly, view it on GitHub\n>> <https://github.com/chris-wood/draft-wood-cfrg-aead-limits/issues/10#issuecomment-632439200>,\n>> or unsubscribe\n>> <https://github.com/notifications/unsubscribe-auth/AIH5DJFD7BWQWX6ORP6EA63RSXNPPANCNFSM4NG5MKBQ>\n>> .\n>>\n>\n",
+          "createdAt": "2020-05-22T20:38:29Z",
+          "updatedAt": "2020-05-22T20:38:29Z"
+        }
+      ]
+    },
+    {
+      "number": 11,
+      "id": "MDU6SXNzdWU2MjM3ODM3OTM=",
+      "title": "Consider multi-user security implications",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/issues/11",
+      "state": "CLOSED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Multi-user security [1,2,3] may affect the limits in this draft. [4] notes that, for AES-GCM, multi-user security limits which typically affect limits by a factor proportional to the number of users do not apply to TLS. This probably warrants further investigation for ChaCha20Poly1305 and AES-CCM. If we were to assume the folklore result (multiply the limit by \\mu), the result would be that QUIC would *not* reset counters after re-key operations. Whether or not we do that may have big implications on the limits, especially since the re-key count is unbounded (as far as I can tell). \r\n\r\nAs an aside, DTLS encodes the epoch in a 16-bit field, so that probably caps it at 2^16 possible re-key events. Maybe we need something for QUIC?\r\n\r\n[1] https://eprint.iacr.org/2016/564.pdf\r\n[2] https://eprint.iacr.org/2018/993.pdf\r\n[3] https://eprint.iacr.org/2017/435.pdf\r\n[4] https://www.isg.rhul.ac.uk/~kp/TLS-AEbounds.pdf",
+      "createdAt": "2020-05-24T03:06:44Z",
+      "updatedAt": "2020-06-19T01:10:53Z",
+      "closedAt": "2020-06-19T01:10:52Z",
+      "comments": [
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "This was addressed by #15.",
+          "createdAt": "2020-06-19T01:10:52Z",
+          "updatedAt": "2020-06-19T01:10:52Z"
+        }
+      ]
+    },
+    {
+      "number": 12,
+      "id": "MDU6SXNzdWU2MjM5MTMyNDc=",
+      "title": "Consider combining confidentiality and integrity bounds for an AE bound",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/issues/12",
+      "state": "CLOSED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "[1] notes that bounds on confidentiality (IND-CPA) and integrity (IND-CXTX) success probability can be added to produce bounds on the AE security. Should we note this, and present that bound?\r\n\r\n[1] https://www.isg.rhul.ac.uk/~kp/TLS-AEbounds.pdf",
+      "createdAt": "2020-05-24T17:59:10Z",
+      "updatedAt": "2020-09-16T11:51:14Z",
+      "closedAt": "2020-09-16T11:51:14Z",
+      "comments": [
+        {
+          "author": "fxguenther",
+          "authorAssociation": "COLLABORATOR",
+          "body": "I'd say it makes sense to note that the bounds can be combined. Not sure giving the bounds for each scheme adds much \u2013 also, were would one _not_ consider CA and IA separately?\r\n\r\nThat made me think: Should we have (semi-)formal definitions for the CA/IA bounds and AE security?",
+          "createdAt": "2020-06-05T14:04:48Z",
+          "updatedAt": "2020-06-05T14:04:48Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "> I'd say it makes sense to note that the bounds can be combined. Not sure giving the bounds for each scheme adds much \u2013 also, were would one not consider CA and IA separately?\r\n\r\nI don't have a use case in mind right now. I imagine applications would track both limits and then re-key whenever one's hit (or near being hit). Should we add recommendations for implementations here?\r\n\r\n> That made me think: Should we have (semi-)formal definitions for the CA/IA bounds and AE security?\r\n\r\nThat'd be good. Do you want to take a crack at this?",
+          "createdAt": "2020-06-05T14:26:58Z",
+          "updatedAt": "2020-06-05T14:26:58Z"
+        }
+      ]
+    },
+    {
+      "number": 16,
+      "id": "MDU6SXNzdWU2NTc1MDA2MzA=",
+      "title": "Consider situations where AAD is non-negligible in length compared to the plaintext",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/issues/16",
+      "state": "OPEN",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "From Dan Harkins in the call. This could affect the presented limits.\r\n",
+      "createdAt": "2020-07-15T16:50:03Z",
+      "updatedAt": "2020-07-30T12:20:15Z",
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "See https://tools.ietf.org/html/draft-ietf-ntp-using-nts-for-ntp-28 as another use case. From Hal Murray on the list:\r\n\r\n> NTP (Network Time Protocol) uses UDP which is easy to forge.  It's getting a \r\n> layer of authentication which uses AEAD.\r\n> \r\n> The basic NTP packet is 48 bytes.  NTS bumps that up to roughly 200.  The \r\n> client-to-server has no encryption.  The server-to-client encrypts roughly 100 \r\n> bytes.\r\n> \r\n> That 100 bytes is a cookie which also uses AEAD.  The cookie contains a \r\n> client-to-server and a server-to-client key for the above AEAD so the server \r\n> doesn't have to maintain any per-client state.  The cookie key is maintained \r\n> by the server.",
+          "createdAt": "2020-07-30T12:20:15Z",
+          "updatedAt": "2020-07-30T12:20:15Z"
+        }
+      ]
+    },
+    {
+      "number": 17,
+      "id": "MDU6SXNzdWU2NTc1MDA5NzQ=",
+      "title": "Discuss post-quantum threat model implications",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/issues/17",
+      "state": "OPEN",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [
+        "help wanted"
+      ],
+      "body": "Per the CFRG interim meeting on 7/15.",
+      "createdAt": "2020-07-15T16:50:34Z",
+      "updatedAt": "2020-09-21T14:14:19Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 18,
+      "id": "MDU6SXNzdWU2NTc1MDEyMDU=",
+      "title": "Include SIV modes ",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/issues/18",
+      "state": "OPEN",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [
+        "help wanted"
+      ],
+      "body": "In particular AES-GCM-SIV, which already (happily) has bounds computed!",
+      "createdAt": "2020-07-15T16:50:58Z",
+      "updatedAt": "2020-09-21T14:14:19Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 21,
+      "id": "MDU6SXNzdWU2NjQxODU0OTI=",
+      "title": "Citation for advantage relative to a random function",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/issues/21",
+      "state": "CLOSED",
+      "author": "martinthomson",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "I think that we are talking generically about IND-CCA(2) and IND-CPA when we define confidentiality advantage.\r\n\r\nSection 5.9 of [this](https://web.cs.ucdavis.edu/~rogaway/classes/227/spring05/book/main.pdf) might work as a reference, but it's light on detail and only talks about IND-CCA in an indirect manner.  That are probably better resources.",
+      "createdAt": "2020-07-23T03:55:26Z",
+      "updatedAt": "2020-09-16T11:51:19Z",
+      "closedAt": "2020-09-16T11:51:19Z",
+      "comments": []
+    },
+    {
+      "number": 22,
+      "id": "MDU6SXNzdWU2NjQxODYxNzg=",
+      "title": "Clearer explanations of q and v",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/issues/22",
+      "state": "CLOSED",
+      "author": "martinthomson",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "These are key parameters and we need to ensure that understanding is crisp.\r\n\r\nDavid McGrew notes:\r\n\r\n> The number q is defined both as the \"number of protected messages\u201d and \u201cencryption attempts\u201d; I think the former will make more sense to the reader.   It might be helpful to define q and v in terms of the number of invocations of the Authenticated Encryption and Authenticated Decryption functions from RFC5116.\r\n\r\nThis is right.  We might provide the definition in one form (to connect better with the reference material), but explain the practical consequences of this being that q/v also correspond to the number of invocations of the encryption/decryption function of the AEAD.",
+      "createdAt": "2020-07-23T03:57:50Z",
+      "updatedAt": "2020-09-16T11:51:36Z",
+      "closedAt": "2020-09-16T11:51:36Z",
+      "comments": []
+    },
+    {
+      "number": 24,
+      "id": "MDU6SXNzdWU2ODgyODEwNTU=",
+      "title": "Highlight that bounds are derived from different papers with different models",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/issues/24",
+      "state": "OPEN",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "... and we're just trying to harmonize everything, which may lead to some discrepancies.",
+      "createdAt": "2020-08-28T18:35:58Z",
+      "updatedAt": "2020-08-28T18:35:58Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 28,
+      "id": "MDU6SXNzdWU3NDUxNzk3NTQ=",
+      "title": "Mattsson feedback",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/issues/28",
+      "state": "OPEN",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "https://mailarchive.ietf.org/arch/msg/cfrg/x_M_WDJGqcJNvoqILDf4-75Mxqg/\r\n\r\nComments:\r\n\r\n-- \"plaintext, and optional associated data\"\r\n \r\nP and A are both optional in RFC 5116.\r\n\r\n\r\n-- It would be good if the document states that it only focuses on \"single forgery attacks\"\r\n\r\nI think some readers might believe that a second forgery is as hard as the first, which it is not. It it typically much easier. It might also vary drastically between algorithms as calculated in [1].\r\n\r\n\r\n-- I think the document should briefly explain the assumptions about the adversary. For both CA and IA, one assumption worth explaining is that the adversary has access to an encryption oracle and can freely encrypt chosen-plaintexts.\r\n\r\n\r\n-- The table defines l as \"length of each message\" while a paragraph further down writes \"maximum message size (l)\".\r\n\r\n\r\n-- \u201dpassive attacker\u201d\r\n\r\nFor a reader that does now the IND-CPA game by heart it might be good to point out that the \u201cpassive\u201d attacker does not just eavesdrop but also choses all the encrypted plaintexts.\r\n\r\n\r\n-- \u201cIntegrity limit (IL): The number ciphertexts an application can decrypt, either successfully or not\u201d\r\n\r\nThat IL also count successful decryptions seems to contradict other parts of the document that links IL to v which by definition only counts failed attempts.\r\n\r\n\r\n-- \u201cThis implies the following usage limit: q + s <= p^(1/2) * 2^(129/2) \u2013 1\u201d\r\n   \u201cThis implies the following limit: v <= (p * 2^127) / (l + 1)\u201d\r\n\r\nThis does not follow with the current definition of p (p = CA or p = IA). To make the inequalities hold I think you need to define p as:\r\n \r\n\"Upper bound on adversary attack success probability\"\r\n\r\njust like the parameter epsilon in [AEBounds].\r\n\r\n\r\n-- I think the document should briefly explain the assumptions about the algorithms. In [GCMProofs] it is e.g. assumed that AES is a PRP. Future cryptanalysis that does not make these ideal assumptions could make the limits worse.\r\n\r\n\r\n-- The document should make it clear that formulas for CA and IA (at least for GCM) are upper bounds. Future analysis could make the limits better. That they are just bounds also make any direct comparision between algorithms tricky as some bounds might be tigher than others.\r\n\r\n\r\n- The draft briefly mention that small limits lead to denial-of-service attacks. The DTLS 1.3 draft does that.\r\n\r\n\r\n-- The draft seems to make the assumption that l is fixed like n, k, r. I don't think this needs to be the case. My understanding is that for the GCM limits, l_max_allowed can be replaced by l_max_seen being the largest length processed. The encryption or decryption function would then terminate when CA or IA can not be verified to be under the chosen bound. This would make a big difference for applications typically processing much smaller messages than for example 2^14. For the CCM integrity bounds, the formula would probably have to involve (2 * l_max_allowed * q + 2 * l_max_seen_* v). The DoS problem would still be tied to l_max_allowed.",
+      "createdAt": "2020-11-18T00:03:58Z",
+      "updatedAt": "2020-12-06T22:23:43Z",
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "fxguenther",
+          "authorAssociation": "COLLABORATOR",
+          "body": "https://mailarchive.ietf.org/arch/msg/cfrg/Mf1MeM_NyRZVNlrRS9SvA8aioS0/\r\n\r\nSome more comments on the document:\r\n\r\n- \"However, in practice, there are often many users with\r\nindependent keys.  The \"multi-user\" security setting hence considers\r\nan attacker's advantage in breaking security of any of these many\r\nkeys, further assuming the attacker may have done some offline work\r\nto help break security.\"\r\n\r\nI think the term \"multi-user\" is a quite misleading term. It was coined by Belallare, Boldyreva, Micali trying to provide a theoretical framework against H\u00e5stad's attack on public key RSA and even then they used quotes (\"\") as a user might have several public keys. When applied to symmetric keys in security protocols with frequent rekeying it becomes a bit misleading as the attack scenario is really for multi-key and each user definitly has several keys. In strongly think the term \"multi-user\" should be replaced with \"multi-key\", but I know that \"multi-user\" is what is used i several academic papers... At a minimum I think you should define \"multi-user\" in terms of multiple keys and write that the keys can belong to one, two, or many users.\r\n\r\n\r\n- \"single-user\". I think this terminology should definitly go away. Luykx et al. use \"single-key\". When applied to e.g. TLS there is already 2 users.\r\n\r\n\r\n- \"Number of attacker forgery attempts (failed AEAD decryption invocations)\"\r\n\r\nNote that Iwata et al. defines q' as the number of decryption queries, while your document defines it as number of failed decryption queries. In theory that could mean that the inequality \r\n\r\nIA <= 2 * (v * (l + 1)) / 2^128\r\n\r\ndoes not hold anymore. In practice it holds anyway. I think you should keep the definition of v, but you should alert the reader that you have modified this, and maybe give some justification.\r\n\r\n\r\n- \"LS aims to keep CA below 2^-60 and IA below 2^-57\"\r\n\r\nThis indicates that you might want two different variables p_ca a p_ia for the two different bounds.\r\n\r\n\r\n- \"AES-GCM without nonce randomization is also discussed in [GCM-MU2], though this section does not include those results as they do not apply to protocols such as TLS 1.3 [RFC8446].\" \r\n\r\nThe negation of \"AES-GCM without nonce randomization\" is not well defined. It would be good to now if the results apply only for the constructions where the salt is secret (TLS 1.3, DTLS 1.3, QUIC, OSCORE), or only to constructions where the salt has the same length as the nonce, or if it apply to all constructions with a random component. It would be good if the document is also useful for protocols like ESP, SRTP, CMS, JOSE, COSE, etc...",
+          "createdAt": "2020-11-27T08:26:06Z",
+          "updatedAt": "2020-11-27T08:26:06Z"
+        },
+        {
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "body": "> I think you should define \"multi-user\" in terms of multiple keys and write that the keys can belong to one, two, or many users.\r\n\r\nYes.\r\n\r\n> This indicates that you might want two different variables p_ca a p_ia for the two different bounds.\r\n\r\nI don't think that is necessary.\r\n\r\n> The negation of \"AES-GCM without nonce randomization\" is not well defined. \r\n\r\nWe can, I believe, rely on the definitions in the citations for that. \r\n\r\n> It would be good to now if the results apply only for the constructions where the salt is secret \r\n\r\nThe salt does not need to remain secret, which is one of the more interesting and valuable results from that paper.  Worth pointing out.",
+          "createdAt": "2020-12-06T22:23:43Z",
+          "updatedAt": "2020-12-06T22:23:43Z"
+        }
+      ]
+    }
+  ],
+  "pulls": [
+    {
+      "number": 1,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDE2NTE3ODQ2",
+      "title": "Edits",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/1",
+      "state": "MERGED",
+      "author": "martinthomson",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Took a first pass through.  I made a bunch of inline edits with comments.  I will turn those into real issues when I get a chance, but I spent my time for today already.\r\n\r\nI thought the lib directory was accidentally loaded, but it turns out that it was accidentally checked in instead.\r\n\r\nBTW, you should make this draft-wood-*.  We don't need to follow crypto conventions, and I have barely done any work \u00af\\_(\u30c4)_/\u00af",
+      "createdAt": "2020-05-12T06:36:14Z",
+      "updatedAt": "2020-05-12T15:29:06Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "59ae2a71b299602fc5f738f2d05f1c511f3bd997",
+      "headRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "headRefName": "edits",
+      "headRefOid": "4a5bf1035bb33fa4b1226b0ceafc022832ef195b",
+      "closedAt": "2020-05-12T15:29:06Z",
+      "mergedAt": "2020-05-12T15:29:06Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "80ba1c0108fc026f5d17a6841c4546f538c33d42"
+      },
+      "comments": [
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "> BTW, you should make this draft-wood-*. We don't need to follow crypto conventions, and I have barely done any work \u00af_(\u30c4)_/\u00af\r\n\r\nI prefer alphabetical order since we're in this together, but if you're not comfortable with draft-thomson, I'll rename it!",
+          "createdAt": "2020-05-12T15:29:03Z",
+          "updatedAt": "2020-05-12T15:29:03Z"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "number": 2,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDE3MDM0NjU0",
+      "title": "Lint fixes and some editorial updates.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/2",
+      "state": "MERGED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "> So p is either CA or IA here.  Do we need to use two characters instead (c\r\n> and i for confidentiality and integrity? e and d for encryption and\r\n> decryption?  s and o for seal and open?)\r\n\r\nI think using separate terms for confidentiality and integrity attack success probability is good -- pC and pI make sense.\r\n\r\n> It seems like the analysis in AEBounds didn't really consider the role that\r\n> the AAD plays in all of this.  What do we want to say about the simplifying\r\n> assumptions here?\r\n\r\nI went back and checked the Iwata paper, which seems to state that the length in their advantage calculations is the sum of AAD and ciphertext/plaintext sent to each oracle query. So, I think we can simplify this an say that l includes the AAD.\r\n\r\nOn the combined confidentiality and integrity limit, I'm not yet sure how I feel about this. If it's the *lower* of the two, then I think it's OK. But that's not clear to me. I'll see if I can find out more details.\r\n\r\n",
+      "createdAt": "2020-05-12T23:55:49Z",
+      "updatedAt": "2020-05-13T12:35:33Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "be9e1f8f810b636cb84d8f2f0c58ced1b094a9f2",
+      "headRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "headRefName": "caw/small-updates",
+      "headRefOid": "3015710ab27f0e7636e5b6b5a35244351285057f",
+      "closedAt": "2020-05-13T04:48:51Z",
+      "mergedAt": "2020-05-13T04:48:51Z",
+      "mergedBy": "martinthomson",
+      "mergeCommit": {
+        "oid": "0a03e7ac77ccc9740cf9d0a57305b25c953277d4"
+      },
+      "comments": [
+        {
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "body": "The CCM analysis appears to do the same with their definition of \\Beta.  But the overall calculations include |\\Beta| + |m|, which counts the message length twice, but the AAD length once.  We might simplify and say that the AAD is counted twice, as we did for QUIC, but probably should be explicit.",
+          "createdAt": "2020-05-13T04:56:47Z",
+          "updatedAt": "2020-05-13T04:56:47Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Ah, yes, good suggestion!",
+          "createdAt": "2020-05-13T12:35:33Z",
+          "updatedAt": "2020-05-13T12:35:33Z"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "number": 3,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDE3NjIzMzcz",
+      "title": "Include simplifying assumptions for CCM, and fill out the limit",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/3",
+      "state": "MERGED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "I didn't drop the term `(v / 2^t)` since, when including it, I don't think it turns out to be negligible. In particular, here's the steps I followed:\r\n\r\n```\r\n(v / 2^t) + (2l * (v + q))^2 / 2^n <= p\r\n=> (v / 2^128) + (2l * (v + q))^2 / 2^128 <= p\r\n=> v + (2l * (v + q))^2 <= 2^128 * p\r\n```\r\n\r\nIf l is small, the first term becomes pretty important. What do you think?",
+      "createdAt": "2020-05-13T21:29:38Z",
+      "updatedAt": "2020-05-14T12:33:19Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "1888b59ad7dcafdb1e1d7cf8071b1d07555a763d",
+      "headRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "headRefName": "caw/ccm-full",
+      "headRefOid": "a94669824479ba7d53d25aec4ef99b0b0abe4ee7",
+      "closedAt": "2020-05-14T12:33:19Z",
+      "mergedAt": "2020-05-14T12:33:19Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "31e2738b9d0e226e314fe43708c370fd22c9b313"
+      },
+      "comments": [
+        {
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "body": "If `v` is large, then `v^2` will still likely dominate.  \r\n\r\nI guess that if `l` is very small (1 is the minimum), and you are in a setting where `v` can reasonably be small, then the full formula makes sense. But `v` needs to be very small.  And that assumes that `q` is also very small.\r\n\r\nIn a setting where you care about `v`, a small value (here, I'm thinking `v=2^8` or less), means exposure to DoS at that cost.  For something like QUIC, I don't think we could deploy with v < 1000 or it would be too easy to shut down active connections.  At that point, the difference in terms is at least 2^22 times.  That's negligible as far as I'm concerned.\r\n\r\nThat lends the full formula more to settings like email or messaging, where volumes are small and exceeding `v` would be stopped on other grounds before even attempting decryption.\r\n\r\nSo I think that there is still value in further simplification, because things like DTLS and QUIC rely on getting to a large `v`.  Settings that want to set an extremely low tolerance for crap might need to consider the full expression.",
+          "createdAt": "2020-05-14T01:50:03Z",
+          "updatedAt": "2020-05-14T01:50:03Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "For the purpose of this draft, would it make sense to write the limit in full and then give examples of how it can be simplified? For example, we can list QUIC as an example where v >>q, which lets us drop the first term. ",
+          "createdAt": "2020-05-14T03:23:52Z",
+          "updatedAt": "2020-05-14T03:23:52Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Cool. I'll merge as-in, and file an issue to simplify further depending on use cases.",
+          "createdAt": "2020-05-14T12:33:14Z",
+          "updatedAt": "2020-05-14T12:33:14Z"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "number": 5,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDE3OTczMTA2",
+      "title": "Add AEAD_AES_128_CCM_8 derivation.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/5",
+      "state": "CLOSED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2020-05-14T12:47:13Z",
+      "updatedAt": "2020-05-15T00:14:30Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "31e2738b9d0e226e314fe43708c370fd22c9b313",
+      "headRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "headRefName": "caw/ccm-8",
+      "headRefOid": "50469f3bf5fbbfe19beec822499c00ed8d0ae913",
+      "closedAt": "2020-05-15T00:14:30Z",
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Closing in favor of #6.",
+          "createdAt": "2020-05-15T00:14:29Z",
+          "updatedAt": "2020-05-15T00:14:29Z"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "number": 6,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDE4MzA0MzM5",
+      "title": "Moar editz",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/6",
+      "state": "MERGED",
+      "author": "martinthomson",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2020-05-15T00:00:20Z",
+      "updatedAt": "2020-05-15T00:14:54Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "31e2738b9d0e226e314fe43708c370fd22c9b313",
+      "headRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "headRefName": "moar-editz",
+      "headRefOid": "a1d224ca4f7ef459b1198fb34923f46f778f5ea6",
+      "closedAt": "2020-05-15T00:14:54Z",
+      "mergedAt": "2020-05-15T00:14:54Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "020945e07da2a2bb78a9a2b1822e12c54c650c25"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDEyMjY2Njkz",
+          "commit": {
+            "abbreviatedOid": "a1d224c"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2020-05-15T00:13:16Z",
+          "updatedAt": "2020-05-15T00:14:48Z",
+          "comments": [
+            {
+              "originalPosition": 110,
+              "body": "\ud83d\udc4d ",
+              "createdAt": "2020-05-15T00:13:16Z",
+              "updatedAt": "2020-05-15T00:14:48Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": 7,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDE4NTc5MjMz",
+      "title": "Fix small error in CCM simplification.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/7",
+      "state": "MERGED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "For clarity, here's what I did:\r\n\r\n```\r\n(2l*(v+q))^2 <= p*2^128\r\n=> 2l*(v+q) <= p^(1/2)*2^64\r\n=> v+q <= (p^(1/2)*2^63) / l\r\n```",
+      "createdAt": "2020-05-15T13:01:01Z",
+      "updatedAt": "2020-05-18T01:43:04Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "020945e07da2a2bb78a9a2b1822e12c54c650c25",
+      "headRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "headRefName": "caw/nit",
+      "headRefOid": "dfd8c2f3ea1d3cf160cb79c14c388b26195c9595",
+      "closedAt": "2020-05-18T01:32:57Z",
+      "mergedAt": "2020-05-18T01:32:57Z",
+      "mergedBy": "martinthomson",
+      "mergeCommit": {
+        "oid": "d7991241b8eb7229317bdddbffa4884dc5ca5e25"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDEzMjI2MTY1",
+          "commit": {
+            "abbreviatedOid": "dfd8c2f"
+          },
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "Times 2, squared, same thing.",
+          "createdAt": "2020-05-18T01:32:52Z",
+          "updatedAt": "2020-05-18T01:32:52Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 8,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDE5NTUxMTUy",
+      "title": "Add Felix as an author.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/8",
+      "state": "MERGED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "cc @fxguenther",
+      "createdAt": "2020-05-18T14:47:42Z",
+      "updatedAt": "2020-05-19T01:47:07Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "d7991241b8eb7229317bdddbffa4884dc5ca5e25",
+      "headRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "headRefName": "caw/add-felix",
+      "headRefOid": "b5eabebd1e33206ef8d466f8369e2d27856b2fda",
+      "closedAt": "2020-05-19T01:38:14Z",
+      "mergedAt": "2020-05-19T01:38:14Z",
+      "mergedBy": "martinthomson",
+      "mergeCommit": {
+        "oid": "f8c47b4920c1bf6931460103f00c6ac272fd4f25"
+      },
+      "comments": [
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "@martinthomson, do you want to merge this and then submit -00?",
+          "createdAt": "2020-05-18T15:43:50Z",
+          "updatedAt": "2020-05-18T15:43:50Z"
+        },
+        {
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Let's open the repo, then we can use the CI to do the submission for us.",
+          "createdAt": "2020-05-19T01:38:35Z",
+          "updatedAt": "2020-05-19T01:38:35Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "> Let's open the repo, then we can use the CI to do the submission for us.\r\n\r\nDone!",
+          "createdAt": "2020-05-19T01:47:07Z",
+          "updatedAt": "2020-05-19T01:47:07Z"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "number": 9,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDIwMzg5NjU1",
+      "title": "Fix AES-GCM bound typo (7 != 9).",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/9",
+      "state": "MERGED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "cc @fxguenther ",
+      "createdAt": "2020-05-19T22:05:09Z",
+      "updatedAt": "2020-05-19T23:40:18Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "c413a2d5f4bcb612d93d2815a9a9974e419ff033",
+      "headRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "headRefName": "caw/typos",
+      "headRefOid": "0dce29bc6efad35eaae0cff4c62e254b0b67affc",
+      "closedAt": "2020-05-19T23:40:18Z",
+      "mergedAt": "2020-05-19T23:40:18Z",
+      "mergedBy": "martinthomson",
+      "mergeCommit": {
+        "oid": "5b6bfe032cbee1119d63009fcad47632e3a1127f"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 13,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDIzNTc2NTkx",
+      "title": "Fix typo in CCM limit.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/13",
+      "state": "MERGED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Whoops!",
+      "createdAt": "2020-05-27T03:01:58Z",
+      "updatedAt": "2020-05-27T03:07:11Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "da0e734e0e576ede72bfb0fe9943f2afcdf62c9a",
+      "headRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "headRefName": "caw/typo",
+      "headRefOid": "cd12a9d810fae10ea8eca899b6cc151ced84275d",
+      "closedAt": "2020-05-27T03:06:54Z",
+      "mergedAt": "2020-05-27T03:06:54Z",
+      "mergedBy": "martinthomson",
+      "mergeCommit": {
+        "oid": "7f4a616cebc3d0d459f545743dcc417f870e404c"
+      },
+      "comments": [
+        {
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "body": "I'm not sure I would characterize this as a typo, but yes, this is better.",
+          "createdAt": "2020-05-27T03:07:11Z",
+          "updatedAt": "2020-05-27T03:07:11Z"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "number": 14,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDIzNTc4NDcx",
+      "title": "Use <= rather than = for the advantages",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/14",
+      "state": "MERGED",
+      "author": "martinthomson",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2020-05-27T03:09:28Z",
+      "updatedAt": "2020-05-27T11:59:30Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "7f4a616cebc3d0d459f545743dcc417f870e404c",
+      "headRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "headRefName": "lte",
+      "headRefOid": "11dcc96491444e1afdc09b4f4991f0c359070d3d",
+      "closedAt": "2020-05-27T11:59:30Z",
+      "mergedAt": "2020-05-27T11:59:30Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "c1db54dcf3b2c6f6b36de2e2ab816d7de827e984"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDE5MTIwMDg1",
+          "commit": {
+            "abbreviatedOid": "11dcc96"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2020-05-27T11:59:25Z",
+          "updatedAt": "2020-05-27T11:59:25Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 15,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDMyNjc0NDAw",
+      "title": "First cut at multi-user security content.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/15",
+      "state": "MERGED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "I'm not overly fond of the simplifications here, but I think it's probably sufficient for our purposes. One thing that's not clear to me is the extent to which we want to discuss the implications of mu settings.\r\n\r\nAnyway, this is just something to get us started. Please have a look!",
+      "createdAt": "2020-06-10T20:11:55Z",
+      "updatedAt": "2020-06-17T01:37:43Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "c1db54dcf3b2c6f6b36de2e2ab816d7de827e984",
+      "headRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "headRefName": "caw/mu-draft",
+      "headRefOid": "4b1ed32d55769ae38c992bcde27da8a6c6024cc5",
+      "closedAt": "2020-06-17T01:37:43Z",
+      "mergedAt": "2020-06-17T01:37:43Z",
+      "mergedBy": "martinthomson",
+      "mergeCommit": {
+        "oid": "963ae58501db91ff5057347307043df5322fee9c"
+      },
+      "comments": [
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Oh, by the way, I think we should merge these changes and rev the document before we submit the QUIC PR. (That'll let us point to this as a reference.)",
+          "createdAt": "2020-06-10T22:52:59Z",
+          "updatedAt": "2020-06-10T22:52:59Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Promoting to real PR. I think this is ready.",
+          "createdAt": "2020-06-16T13:22:55Z",
+          "updatedAt": "2020-06-16T13:22:55Z"
+        }
+      ],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDI4NjExMzIy",
+          "commit": {
+            "abbreviatedOid": "12c4561"
+          },
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "Is there value in pointing out that key rotation within a single context can be useful in ensuring that attacker advantage remains limited, and in that context you can treat the multiple keys used in that context as a narrow multi-user context with a number of users equal to the number of keys.  Using the multi-user analysis provides usage limits across all of the keys in the context.  These limits should be smaller, but they should also ensure that key updates are effective in keeping the attacker advantage bounded.",
+          "createdAt": "2020-06-11T05:56:07Z",
+          "updatedAt": "2020-06-11T06:15:49Z",
+          "comments": [
+            {
+              "originalPosition": 5,
+              "body": "```suggestion\r\n    title: \"Public-Key Encryption in a Multi-user Setting: Security Proofs and Improvements\"\r\n```",
+              "createdAt": "2020-06-11T05:56:07Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            },
+            {
+              "originalPosition": 36,
+              "body": "I think that we want to break this out into a different paragraph at a minimum.\r\n\r\nThe way that I explain mu limits is to talk about \"any\" vs. \"specific\".  That is, if you care about the confidentiality of communications in the aggregate, you have to consider all users, both individually and in groups.  The multi-user setting considers the possibility that an attacker might want to attack any user from a group.  This is different than the single-user setting where we consider the advantage an attacker gains against a specific user because the attacker doesn't care which user gets hit.\r\n\r\nThen you can say that an analysis based on a group that includes all users, recognizing that this is the pessimal case, might be performed to determine numbers.  However, the target for attacker advantage in that context might be different than targets in the single-user context.",
+              "createdAt": "2020-06-11T06:02:07Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            },
+            {
+              "originalPosition": 61,
+              "body": "These are single-key, not single-user, right?",
+              "createdAt": "2020-06-11T06:02:31Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            },
+            {
+              "originalPosition": 113,
+              "body": "We need to explain why we think that this is the case, or what limits we place on different values.",
+              "createdAt": "2020-06-11T06:04:06Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            },
+            {
+              "originalPosition": 52,
+              "body": "Don't we need 'u' as well?",
+              "createdAt": "2020-06-11T06:04:55Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            },
+            {
+              "originalPosition": 139,
+              "body": "\"currently\"",
+              "createdAt": "2020-06-11T06:07:11Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            },
+            {
+              "originalPosition": 142,
+              "body": "So what you are saying is that limits are shared across every user (or key)?  That implies that if we want to preserve a 2^-57 limit on probability, then generally the limit degrades linearly with `u`.\r\n\r\nThe more interesting case here is the CCM `v + q <= p^(1/2) * ?? / l` which suggests that limits are reduced by the square root of `u`.  It might be worth spelling that out.",
+              "createdAt": "2020-06-11T06:11:29Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDI4OTE5OTg0",
+          "commit": {
+            "abbreviatedOid": "0e0f3e9"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-06-11T13:40:27Z",
+          "updatedAt": "2020-06-11T13:40:27Z",
+          "comments": [
+            {
+              "originalPosition": 61,
+              "body": "As asked on the email, I don't understand how you're distinguishing between these two. (To me, they're the same.)",
+              "createdAt": "2020-06-11T13:40:27Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDI4OTIwMTQ1",
+          "commit": {
+            "abbreviatedOid": "0e0f3e9"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-06-11T13:40:38Z",
+          "updatedAt": "2020-06-11T13:40:38Z",
+          "comments": [
+            {
+              "originalPosition": 113,
+              "body": "Good call. I'll add some color!",
+              "createdAt": "2020-06-11T13:40:38Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDI4OTIwMzA3",
+          "commit": {
+            "abbreviatedOid": "0e0f3e9"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-06-11T13:40:48Z",
+          "updatedAt": "2020-06-11T13:40:49Z",
+          "comments": [
+            {
+              "originalPosition": 52,
+              "body": "Yep!",
+              "createdAt": "2020-06-11T13:40:48Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDI4OTIxOTU4",
+          "commit": {
+            "abbreviatedOid": "0e0f3e9"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-06-11T13:41:56Z",
+          "updatedAt": "2020-06-11T13:41:56Z",
+          "comments": [
+            {
+              "originalPosition": 142,
+              "body": "That's right -- and using CCM here is definitely better for the reason you point out! I'll include it alongside AEAD_CHACHA20_POLY1305 so we're complete.",
+              "createdAt": "2020-06-11T13:41:56Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDI5NDQzMTQ4",
+          "commit": {
+            "abbreviatedOid": "0e0f3e9"
+          },
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-06-12T03:48:12Z",
+          "updatedAt": "2020-06-12T03:48:13Z",
+          "comments": [
+            {
+              "originalPosition": 142,
+              "body": "It seems to me that the reason the limits on ChaCha are poor is that we don't have a goodd analysis.",
+              "createdAt": "2020-06-12T03:48:12Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDI5NDQzNTEy",
+          "commit": {
+            "abbreviatedOid": "0e0f3e9"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-06-12T03:49:37Z",
+          "updatedAt": "2020-06-12T03:49:37Z",
+          "comments": [
+            {
+              "originalPosition": 142,
+              "body": "Yep, that\u2019s right!",
+              "createdAt": "2020-06-12T03:49:37Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDMxMDc3ODg2",
+          "commit": {
+            "abbreviatedOid": "429ff16"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-06-16T00:23:06Z",
+          "updatedAt": "2020-06-16T00:23:06Z",
+          "comments": [
+            {
+              "originalPosition": 36,
+              "body": "I think this is resolved now. @martinthomson, please have a look!",
+              "createdAt": "2020-06-16T00:23:06Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDMxMTc0NzM5",
+          "commit": {
+            "abbreviatedOid": "429ff16"
+          },
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "This is looking good.  I'm not sure about the calculation of the confidentiality limit for GCM though.",
+          "createdAt": "2020-06-16T05:42:46Z",
+          "updatedAt": "2020-06-16T06:01:42Z",
+          "comments": [
+            {
+              "originalPosition": 36,
+              "body": "```suggestion\r\nattacker is assumed to have done some offline work to help break security of\r\nsingle key (or user), where the attacker cannot choose which key is attacked. As a result, AEAD algorithm limits may\r\n```\r\n\r\nOr something like that.",
+              "createdAt": "2020-06-16T05:42:46Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            },
+            {
+              "originalPosition": 56,
+              "body": "```suggestion\r\n| u | Number of users or keys (multi-user setting only) |\r\n```",
+              "createdAt": "2020-06-16T05:43:04Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            },
+            {
+              "originalPosition": 75,
+              "body": "\"public-key\"?",
+              "createdAt": "2020-06-16T05:43:17Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            },
+            {
+              "originalPosition": 91,
+              "body": "We need to call out that this depends on nonce-randomization, as used in TLS.  The limits are dramatically different if nonces are repeated, right?  The paper shows that this reduces to `u(u+p)/2^k + \\sigma^2/2^n` which is pretty poor.",
+              "createdAt": "2020-06-16T05:46:53Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            },
+            {
+              "originalPosition": 99,
+              "body": "I'm not sure that this equation is right.\r\n\r\nThe value you are trying to include is `\\sigma.B/2^n`, right?  And you are setting \\sigma to the total number of blocks in both encryption and forgery queries, which I make out to be `(v + q) * l`.  That suggests to me that you could write this as `((v + q) * l)^2/u/2^128` (using `\\sigma = uB`).  That produces a very different limit of `(p * u * 2^128)^0.5/l`.",
+              "createdAt": "2020-06-16T05:58:34Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            },
+            {
+              "originalPosition": 140,
+              "body": "Hah, in other words, it's not worth worrying about :)",
+              "createdAt": "2020-06-16T05:59:24Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            },
+            {
+              "originalPosition": 152,
+              "body": "No confidentiality limit?",
+              "createdAt": "2020-06-16T06:00:27Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            },
+            {
+              "originalPosition": 156,
+              "body": "that's 8l and not 81?  It might pay to just use 2^103 then.",
+              "createdAt": "2020-06-16T06:00:53Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDMxNDcyMzk1",
+          "commit": {
+            "abbreviatedOid": "429ff16"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-06-16T12:55:48Z",
+          "updatedAt": "2020-06-16T12:55:48Z",
+          "comments": [
+            {
+              "originalPosition": 99,
+              "body": "Yep -- I made the wrong simplifying assumption. If we just assume B = \\sigma/u, then I get what you have. I'll update accordingly.",
+              "createdAt": "2020-06-16T12:55:48Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDMxNDg2Mjc5",
+          "commit": {
+            "abbreviatedOid": "46e6ff3"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-06-16T13:11:52Z",
+          "updatedAt": "2020-06-16T13:11:53Z",
+          "comments": [
+            {
+              "originalPosition": 75,
+              "body": "Yeah, their paper doesn't talk about the secret-key setting.",
+              "createdAt": "2020-06-16T13:11:53Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDMxNDg4NDQ0",
+          "commit": {
+            "abbreviatedOid": "46e6ff3"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-06-16T13:14:24Z",
+          "updatedAt": "2020-06-16T13:14:24Z",
+          "comments": [
+            {
+              "originalPosition": 91,
+              "body": "Good point. I'll note that AES-GCM without nonce randomization is out of scope.",
+              "createdAt": "2020-06-16T13:14:24Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDMxNDkzOTgz",
+          "commit": {
+            "abbreviatedOid": "46e6ff3"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-06-16T13:20:28Z",
+          "updatedAt": "2020-06-16T13:20:28Z",
+          "comments": [
+            {
+              "originalPosition": 156,
+              "body": "Good call -- I'll make that change here and above.",
+              "createdAt": "2020-06-16T13:20:28Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDMxNDk0MjYy",
+          "commit": {
+            "abbreviatedOid": "46e6ff3"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-06-16T13:20:45Z",
+          "updatedAt": "2020-06-16T13:20:45Z",
+          "comments": [
+            {
+              "originalPosition": 152,
+              "body": "I meant to write \"combined integrity and confidentiality\" limit -- I'll fix that.",
+              "createdAt": "2020-06-16T13:20:45Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDMxNDk0Mzg5",
+          "commit": {
+            "abbreviatedOid": "46e6ff3"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-06-16T13:20:52Z",
+          "updatedAt": "2020-06-16T13:20:53Z",
+          "comments": [
+            {
+              "originalPosition": 140,
+              "body": ":)",
+              "createdAt": "2020-06-16T13:20:52Z",
+              "updatedAt": "2020-06-17T01:01:00Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": 19,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDU1NDYyMTE1",
+      "title": "Add some dates",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/19",
+      "state": "MERGED",
+      "author": "martinthomson",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "And use a DOI rather than maintain a reference for Poly1305.",
+      "createdAt": "2020-07-23T03:35:41Z",
+      "updatedAt": "2020-07-30T12:16:02Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "e0e12e3fbee2f46a11c8df9dca0f48ca16a95c7a",
+      "headRepository": "martinthomson/draft-wood-cfrg-aead-limits",
+      "headRefName": "date-gcmproofs",
+      "headRefOid": "dd4eabcca096af94af31e86a2fee80f8fad3adc4",
+      "closedAt": "2020-07-30T12:16:02Z",
+      "mergedAt": "2020-07-30T12:16:02Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "ed729206227303f50fe359951c95cd82fbf2d17d"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDU4MzQyODE5",
+          "commit": {
+            "abbreviatedOid": "dd4eabc"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2020-07-30T12:15:58Z",
+          "updatedAt": "2020-07-30T12:15:58Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 20,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDU1NDYzNzY0",
+      "title": "Rewrap equations",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/20",
+      "state": "MERGED",
+      "author": "martinthomson",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "These were LONG",
+      "createdAt": "2020-07-23T03:43:14Z",
+      "updatedAt": "2020-07-30T12:16:15Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "e0e12e3fbee2f46a11c8df9dca0f48ca16a95c7a",
+      "headRepository": "martinthomson/draft-wood-cfrg-aead-limits",
+      "headRefName": "rewrap-eqn",
+      "headRefOid": "916c3f4ce0c2c9c5b55c11c982e8ff4cf9d13459",
+      "closedAt": "2020-07-30T12:16:15Z",
+      "mergedAt": "2020-07-30T12:16:15Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "303c8459b63343bcb0fa0558305825bfbab9d0cc"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 23,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDU1NDc3NTEx",
+      "title": "A few nits from David",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/23",
+      "state": "MERGED",
+      "author": "martinthomson",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2020-07-23T04:45:24Z",
+      "updatedAt": "2020-07-30T12:19:24Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "e0e12e3fbee2f46a11c8df9dca0f48ca16a95c7a",
+      "headRepository": "martinthomson/draft-wood-cfrg-aead-limits",
+      "headRefName": "mcgrew-adoption",
+      "headRefOid": "7673a05d435cbeed536b2112ce6834e80bb3a3d3",
+      "closedAt": "2020-07-30T12:19:24Z",
+      "mergedAt": "2020-07-30T12:19:24Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "2a2a1480d6607ed01b608368e08fc887b04cf9b3"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 25,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDg2NDk0MTM3",
+      "title": "AE advantage/limits, wording, typos",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/25",
+      "state": "MERGED",
+      "author": "fxguenther",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Addresses issues #12, #21, #22 ",
+      "createdAt": "2020-09-14T10:03:15Z",
+      "updatedAt": "2020-09-16T13:40:25Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "533cb5ab97f200eba642054ff603c23f31363c6b",
+      "headRepository": "fxguenther/draft-irtf-cfrg-aead-limits",
+      "headRefName": "wording-typos",
+      "headRefOid": "b7ddd016a3b15068b602fc056033dbe7284e5eb3",
+      "closedAt": "2020-09-16T11:46:27Z",
+      "mergedAt": "2020-09-16T11:46:27Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "06405638154afdf8d635a39c17775374db62151f"
+      },
+      "comments": [
+        {
+          "author": "fxguenther",
+          "authorAssociation": "COLLABORATOR",
+          "body": "> This LGTM with the suggested changes! Thanks, @fxguenther. Per #21, should we also include a reference for the IND-CTXT and IND-CPA properties?\r\n\r\nGood point, I added references now (b7ddd01)",
+          "createdAt": "2020-09-16T09:25:47Z",
+          "updatedAt": "2020-09-16T09:25:47Z"
+        }
+      ],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDg4MjM5MDA3",
+          "commit": {
+            "abbreviatedOid": "f782d9f"
+          },
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "This is good stuff.  Thanks for doing it.",
+          "createdAt": "2020-09-15T00:18:39Z",
+          "updatedAt": "2020-09-15T00:22:53Z",
+          "comments": [
+            {
+              "originalPosition": 79,
+              "body": "...in the single-user setting.",
+              "createdAt": "2020-09-15T00:18:39Z",
+              "updatedAt": "2020-09-16T09:22:31Z"
+            },
+            {
+              "originalPosition": 91,
+              "body": "Maybe reword:\r\n\r\n```suggestion\r\n- Confidentiality limit (CL): The number of messages an application can encrypt\r\n  before giving the adversary a confidentiality advantage higher than CA.\r\n```\r\n\r\nThen below:\r\n\r\n```\r\nWhen limits are expressed as a number of messages, this requires assumptions about\r\nthe size of messages and any authenticated additional data (AAD).  Limits can instead\r\nbe expressed in terms of the number of plaintext bytes and maybe AAD bytes in total.\r\n```",
+              "createdAt": "2020-09-15T00:20:05Z",
+              "updatedAt": "2020-09-16T09:22:31Z"
+            },
+            {
+              "originalPosition": 105,
+              "body": "```suggestion\r\n  number of ciphertexts an application can encrypt or decrypt before giving the adversary\r\n```",
+              "createdAt": "2020-09-15T00:22:20Z",
+              "updatedAt": "2020-09-16T09:22:31Z"
+            },
+            {
+              "originalPosition": 106,
+              "body": "```suggestion\r\n  an authenticated encryption advantage higher than AEA.\r\n```",
+              "createdAt": "2020-09-15T00:22:28Z",
+              "updatedAt": "2020-09-16T09:22:31Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDg4Njc5NTU2",
+          "commit": {
+            "abbreviatedOid": "f782d9f"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-09-15T13:26:01Z",
+          "updatedAt": "2020-09-15T13:26:02Z",
+          "comments": [
+            {
+              "originalPosition": 39,
+              "body": "```suggestion\r\nconfidentiality and integrity against an active attacker. Specifically:\r\n```",
+              "createdAt": "2020-09-15T13:26:01Z",
+              "updatedAt": "2020-09-16T09:22:31Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDg4Njc5ODAw",
+          "commit": {
+            "abbreviatedOid": "f782d9f"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "This LGTM with the suggested changes! Thanks, @fxguenther. Per #21, should we also include a reference for the IND-CTXT and IND-CPA properties?",
+          "createdAt": "2020-09-15T13:26:18Z",
+          "updatedAt": "2020-09-15T13:31:37Z",
+          "comments": [
+            {
+              "originalPosition": 46,
+              "body": "```suggestion\r\n- Confidentiality advantage (CA): The probability of a passive attacker\r\n```",
+              "createdAt": "2020-09-15T13:26:18Z",
+              "updatedAt": "2020-09-16T09:22:31Z"
+            },
+            {
+              "originalPosition": 56,
+              "body": "```suggestion\r\n- Integrity advantage (IA): The probability of a active attacker succeeding\r\n```",
+              "createdAt": "2020-09-15T13:26:28Z",
+              "updatedAt": "2020-09-16T09:22:31Z"
+            },
+            {
+              "originalPosition": 62,
+              "body": "```suggestion\r\n- Authenticated Encryption advantage (AEA): The probability of a active\r\n```",
+              "createdAt": "2020-09-15T13:27:34Z",
+              "updatedAt": "2020-09-16T09:22:31Z"
+            },
+            {
+              "originalPosition": 67,
+              "body": "```suggestion\r\nor is able to forge a ciphertext that will be accepted as valid.\r\n```",
+              "createdAt": "2020-09-15T13:27:55Z",
+              "updatedAt": "2020-09-16T09:22:31Z"
+            },
+            {
+              "originalPosition": 91,
+              "body": "+1 to this suggestion!",
+              "createdAt": "2020-09-15T13:29:19Z",
+              "updatedAt": "2020-09-16T09:22:31Z"
+            },
+            {
+              "originalPosition": 99,
+              "body": "```suggestion\r\n- Integrity limit (IL): The number of ciphertexts an application can decrypt, \r\n  either successfully or not, before giving the adversary an integrity advantage \r\n  higher than IA.\r\n```",
+              "createdAt": "2020-09-15T13:30:13Z",
+              "updatedAt": "2020-09-16T09:22:31Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDg5NDM4MTk5",
+          "commit": {
+            "abbreviatedOid": "b7ddd01"
+          },
+          "author": "fxguenther",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-09-16T09:23:21Z",
+          "updatedAt": "2020-09-16T09:23:22Z",
+          "comments": [
+            {
+              "originalPosition": 79,
+              "body": "Resolved in b7ddd01",
+              "createdAt": "2020-09-16T09:23:22Z",
+              "updatedAt": "2020-09-16T09:23:22Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDg5NDM4NTEx",
+          "commit": {
+            "abbreviatedOid": "b7ddd01"
+          },
+          "author": "fxguenther",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-09-16T09:23:44Z",
+          "updatedAt": "2020-09-16T09:23:44Z",
+          "comments": [
+            {
+              "originalPosition": 91,
+              "body": "Resolved in b7ddd01",
+              "createdAt": "2020-09-16T09:23:44Z",
+              "updatedAt": "2020-09-16T09:23:44Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDg5NDM4OTE5",
+          "commit": {
+            "abbreviatedOid": "b7ddd01"
+          },
+          "author": "fxguenther",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-09-16T09:24:13Z",
+          "updatedAt": "2020-09-16T09:24:13Z",
+          "comments": [
+            {
+              "originalPosition": 99,
+              "body": "Resolved in b7ddd01",
+              "createdAt": "2020-09-16T09:24:13Z",
+              "updatedAt": "2020-09-16T09:24:13Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": 26,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDg2NDk1ODg3",
+      "title": "AES-GCM mu bounds revision",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/26",
+      "state": "MERGED",
+      "author": "fxguenther",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Based on ePrint 2018/993.",
+      "createdAt": "2020-09-14T10:06:13Z",
+      "updatedAt": "2020-09-16T13:38:39Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "533cb5ab97f200eba642054ff603c23f31363c6b",
+      "headRepository": "fxguenther/draft-irtf-cfrg-aead-limits",
+      "headRefName": "mu-bounds-revision",
+      "headRefOid": "841459454f9b2cc8614614466aa47261eb393bc0",
+      "closedAt": "2020-09-16T11:50:44Z",
+      "mergedAt": "2020-09-16T11:50:44Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "77de32e3684dfb7f8d0b969fdc46df93757bd0d3"
+      },
+      "comments": [
+        {
+          "author": "fxguenther",
+          "authorAssociation": "COLLABORATOR",
+          "body": "> I wonder how much of the commented stuff needs to be included in the draft. Appendix?\r\n\r\nGood question. For now I put them as comments mainly for our own future reference. But I guess we could display them in an appendix along with some more explanation if there's value to that.",
+          "createdAt": "2020-09-16T09:44:43Z",
+          "updatedAt": "2020-09-16T09:44:43Z"
+        }
+      ],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDg4MjM2OTcy",
+          "commit": {
+            "abbreviatedOid": "3405b17"
+          },
+          "author": "martinthomson",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "I wonder how much of the commented stuff needs to be included in the draft.  Appendix?",
+          "createdAt": "2020-09-15T00:12:29Z",
+          "updatedAt": "2020-09-15T00:16:07Z",
+          "comments": [
+            {
+              "originalPosition": 130,
+              "body": "Do we allow the first term to reach 2^-48, because that means p being 2^-48 in the below results in AE being 2^-47.",
+              "createdAt": "2020-09-15T00:12:30Z",
+              "updatedAt": "2020-09-16T11:50:24Z"
+            },
+            {
+              "originalPosition": 186,
+              "body": "Is this what we want to say, or do we want to instead say that the AE limit can be used to derive an integrity limit based on a chosen `p` and allocation of the limit between `q` and `v`?",
+              "createdAt": "2020-09-15T00:15:43Z",
+              "updatedAt": "2020-09-16T11:50:24Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDg5NDUzMDQw",
+          "commit": {
+            "abbreviatedOid": "5d3cc7b"
+          },
+          "author": "fxguenther",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-09-16T09:41:38Z",
+          "updatedAt": "2020-09-16T09:41:39Z",
+          "comments": [
+            {
+              "originalPosition": 130,
+              "body": "I wanted to express here that \"p is always >= 2^-48\", but Chris rightfully pointed out that deriving the limit based on both terms (.../2^127 _and_ 1/2^48) is much cleaner. Changed that in 5d3cc7b.",
+              "createdAt": "2020-09-16T09:41:39Z",
+              "updatedAt": "2020-09-16T11:50:24Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDg5NDUzNTI4",
+          "commit": {
+            "abbreviatedOid": "5d3cc7b"
+          },
+          "author": "fxguenther",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-09-16T09:42:12Z",
+          "updatedAt": "2020-09-16T09:42:12Z",
+          "comments": [
+            {
+              "originalPosition": 186,
+              "body": "Good point, I added a repetition of these explicit limits in 5d3cc7b.",
+              "createdAt": "2020-09-16T09:42:12Z",
+              "updatedAt": "2020-09-16T11:50:24Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDg4Njg1ODQw",
+          "commit": {
+            "abbreviatedOid": "3405b17"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2020-09-15T13:32:17Z",
+          "updatedAt": "2020-09-16T11:48:10Z",
+          "comments": [
+            {
+              "originalPosition": 42,
+              "body": "```suggestion\r\n| B | Maximum number of blocks encrypted by any user or key (multi-user setting only) |\r\n```",
+              "createdAt": "2020-09-15T13:32:17Z",
+              "updatedAt": "2020-09-16T11:50:24Z"
+            },
+            {
+              "originalPosition": 186,
+              "body": "Stefano expressed interest in giving us a mu integrity limit, though turnaround there is still TBD. So I think this text accurately reflects reality as of now.",
+              "createdAt": "2020-09-15T13:37:21Z",
+              "updatedAt": "2020-09-16T11:50:24Z"
+            },
+            {
+              "originalPosition": 167,
+              "body": "```suggestion\r\nCA <= (q*l*B / 2^127) + (1 / 2^48)\r\n```",
+              "createdAt": "2020-09-15T13:46:26Z",
+              "updatedAt": "2020-09-16T11:50:24Z"
+            },
+            {
+              "originalPosition": 125,
+              "body": "```suggestion\r\nAE <= ((q+v)*l*B / 2^127) + (1 / 2^48)\r\n```",
+              "createdAt": "2020-09-15T13:46:48Z",
+              "updatedAt": "2020-09-16T11:50:24Z"
+            },
+            {
+              "originalPosition": 148,
+              "body": "```suggestion\r\n    and applying simplifications as above (note there are no verification queries),\r\n```",
+              "createdAt": "2020-09-15T13:47:14Z",
+              "updatedAt": "2020-09-16T11:50:24Z"
+            },
+            {
+              "originalPosition": 41,
+              "body": "```suggestion\r\n| u | Number of users or keys (multi-user setting only) |\r\n```",
+              "createdAt": "2020-09-15T13:49:02Z",
+              "updatedAt": "2020-09-16T11:50:24Z"
+            },
+            {
+              "originalPosition": 116,
+              "body": "\ud83d\udc4d (by 2nd term I assume you mean \\sigma*B/2^127, as that checks out)",
+              "createdAt": "2020-09-15T13:54:09Z",
+              "updatedAt": "2020-09-16T11:50:24Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDg5NTQ0MDcy",
+          "commit": {
+            "abbreviatedOid": "8414594"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2020-09-16T11:50:36Z",
+          "updatedAt": "2020-09-16T11:50:36Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 27,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDg3OTM1MDU4",
+      "title": "Fix two nits.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-aead-limits/pull/27",
+      "state": "MERGED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2020-09-16T11:53:56Z",
+      "updatedAt": "2020-09-16T13:57:02Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "baseRefName": "master",
+      "baseRefOid": "77de32e3684dfb7f8d0b969fdc46df93757bd0d3",
+      "headRepository": "cfrg/draft-irtf-cfrg-aead-limits",
+      "headRefName": "caw/nits",
+      "headRefOid": "0ef75b8318742d24ec72c832311c069bcb575076",
+      "closedAt": "2020-09-16T13:57:02Z",
+      "mergedAt": "2020-09-16T13:57:02Z",
+      "mergedBy": "fxguenther",
+      "mergeCommit": {
+        "oid": "03d1a8fe5176d1a213975dc5a204380f41c54750"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NDg5NjUyMTY4",
+          "commit": {
+            "abbreviatedOid": "0ef75b8"
+          },
+          "author": "fxguenther",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "All good, thanks for catching those.",
+          "createdAt": "2020-09-16T13:56:06Z",
+          "updatedAt": "2020-09-16T13:56:06Z",
+          "comments": []
+        }
+      ]
+    }
+  ]
+}

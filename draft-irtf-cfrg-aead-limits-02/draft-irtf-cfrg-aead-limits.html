@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>Usage Limits on AEAD Algorithms</title>
+<meta content="Felix Günther" name="author">
+<meta content="Martin Thomson" name="author">
+<meta content="Christopher A. Wood" name="author">
+<meta content="
+       An Authenticated Encryption with Associated Data (AEAD) algorithm provides
+confidentiality and integrity.  Excessive use of the same key can give an
+attacker advantages in breaking these properties.  This document provides simple
+guidance for users of common AEAD functions about how to limit the use of keys
+in order to bound the advantage given to an attacker.  It considers limits in
+both single- and multi-key settings. 
+    " name="description">
+<meta content="xml2rfc 3.5.0" name="generator">
+<meta content="Internet-Draft" name="keyword">
+<meta content="draft-irtf-cfrg-aead-limits-latest" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.5.0
+    Python 3.8.7
+    appdirs 1.4.4
+    ConfigArgParse 1.2.3
+    google-i18n-address 2.4.0
+    html5lib 1.1
+    intervaltree 3.1.0
+    Jinja2 2.11.2
+    kitchen 1.2.6
+    lxml 4.6.2
+    pycountry 20.7.3
+    pyflakes 2.2.0
+    PyYAML 5.4.1
+    requests 2.25.1
+    setuptools 51.3.3
+    six 1.15.0
+-->
+<link href="draft-irtf-cfrg-aead-limits.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">@import url('https://martinthomson.github.io/i-d-template/fonts.css');
+
+html {
+  --background-color: #fff;
+  --text-color: #222;
+  --title-color: #191919;
+  --link-color: #2a6496;
+  --highlight-color: #f9f9f9;
+  --line-color: #eee;
+  --pilcrow-weak: #ddd;
+  --pilcrow-strong: #bbb;
+  --small-font-size: 14.5px;
+  scrollbar-color: #bbb #eee;
+}
+@media (prefers-color-scheme: dark) {
+html {
+  --background-color: #121212;
+  --text-color: #f0f0f0;
+  --title-color: #fff;
+  --link-color: #4da4f0;
+  --highlight-color: #282828;
+  --line-color: #444;
+  --pilcrow-weak: #444;
+  --pilcrow-strong: #666;
+  scrollbar-color: #777 #333;
+}
+}
+body {
+  max-width: 600px;
+  margin: 75px auto;
+  padding: 0 5px;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  font: 16px/22px "Lora", serif;
+  scroll-behavior: smooth;
+}
+
+.ears {
+  display: none;
+}
+
+/* headings */
+#title, h1, h2, h3, h4, h5, h6 {
+  font-family: "Cabin Condensed", sans-serif;
+  font-weight: 600;
+  margin: 0.8em 0 0.3em;
+  font-size-adjust: 0.5;
+  color: var(--title-color);
+}
+#title {
+  padding: 1em 0 0.2em;
+  font-size: 32px;
+  line-height: 40px;
+  clear: both;
+}
+h1, h2, h3 {
+  font-size: 22px;
+  line-height: 27px;
+}
+h4, h5, h6 {
+  font-size: 20px;
+  line-height: 24px;
+}
+
+/* general structure */
+.author {
+  padding-bottom: 0.3em;
+}
+#abstract+p, #abstract+p code, #abstract+p samp, #abstract+p tt {
+  font-size: 18px;
+  line-height: 24px;
+}
+p {
+  padding: 0;
+  margin: 0.5em 0;
+  text-align: left;
+}
+div {
+  margin: 0;
+}
+.alignRight.art-text {
+  background-color: var(--highlight-color);
+  border: 1px solid var(--line-color);
+  border-radius: 3px;
+  padding: 0.5em 1em 0;
+  margin-bottom: 0.5em;
+}
+.alignRight.art-text pre {
+  padding: 0;
+  width: auto;
+}
+.alignRight {
+  margin: 1em 0;
+}
+.alignRight > *:first-child {
+  border: none;
+  margin: 0;
+  float: right;
+  clear: both;
+}
+.alignRight > *:nth-child(2) {
+  clear: both;
+  display: block;
+  border: none;
+}
+svg {
+  display: block;
+}
+.alignCenter.art-text {
+  background-color: var(--highlight-color);
+  border: 1px solid var(--line-color);
+  border-radius: 3px;
+  padding: 0.5em 1em 0;
+  margin-bottom: 0.5em;
+}
+.alignCenter.art-text pre {
+  padding: 0;
+  width: auto;
+}
+.alignCenter {
+  margin: 1em 0;
+}
+.alignCenter > *:first-child {
+  border: none;
+  /* this isn't optimal, but it's an existence proof.  PrinceXML doesn't
+     support flexbox yet.
+  */
+  display: table;
+  margin: 0 auto;
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 0.5em 2em;
+}
+ol ol, ul ul, ol ul, ul ol {
+  margin-left: 1em;
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+.ulCompact li {
+  margin: 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+}
+ul.empty li, .ulEmpty li {
+  margin-top: 0.5em;
+}
+ul.compact, .ulCompact,
+ol.compact, .olCompact {
+  line-height: 100%;
+  margin: 0 0 0 2em;
+}
+
+/* definition lists */
+dl {
+}
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+dl > dd {
+  margin-bottom: .8em;
+  min-height: 1.3em;
+}
+dl.compact > dd, .dlCompact > dd {
+  margin-bottom: 0em;
+}
+dl > dd > dl {
+  margin-top: 0.5em;
+  margin-bottom: 0em;
+}
+dd.break {
+  display: none;
+}
+
+/* links */
+a, a[href].selfRef:hover {
+  text-decoration: none;
+}
+a[href].selfRef {
+  color: var(--text-color);
+}
+a[href] {
+  color: var(--link-color);
+}
+a[href]:hover {
+  text-decoration: underline;
+}
+a[href].selfRef:hover {
+  background-color: var(--highlight-color);
+}
+a.xref {
+  white-space: nowrap;
+}
+
+/* Figures */
+tt, code, pre {
+  background-color: var(--highlight-color);
+  font: 14px/22px 'Oxygen Mono', monospace;
+}
+pre {
+  border: 1px solid var(--line-color);
+  font-size: 13.5px;
+  line-height: 16px;
+  letter-spacing: -0.2px;
+  margin: 5px;
+  padding: 5px;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0.5em 0;
+  padding: 0;
+}
+figure blockquote {
+  margin: 0.8em 0.4em 0.4em;
+}
+figcaption, caption {
+  font-style: italic;
+  margin: 0.5em 1.5em;
+  text-align: left;
+}
+@media screen {
+  pre {
+    display: inline-block;
+    overflow-x: auto;
+    max-width: 100%;
+    width: calc(100% - 22px - 1em);
+  }
+  figure pre {
+    display: block;
+    width: calc(100% - 25px);
+  }
+  pre + .pilcrow {
+    display: inline-block;
+    vertical-align: text-bottom;
+    padding-bottom: 8px;
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 0 2em;
+  font-style: italic;
+}
+blockquote {
+  background-color: var(--highlight-color);
+  border: 1px solid var(--line-color);
+  border-radius: 3px;
+  margin: 1em 0;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+
+/* tables */
+table {
+  max-width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+}
+table.right {
+  margin-left: auto;
+}
+table.center {
+  margin-left: auto;
+  margin-right: auto;
+}
+table.left {
+  margin-right: auto;
+}
+thead, tbody {
+  border: 1px solid var(--line-color);
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 5px 10px;
+}
+th {
+  background-color: var(--line-color);
+}
+tr:nth-child(2n) > td {
+  background-color: var(--background-color);
+}
+tr:nth-child(2n+1) > td {
+  background-color: var(--highlight-color);
+}
+thead+tbody > tr:nth-child(2n) > td {
+  background-color: var(--highlight-color);
+}
+thead+tbody > tr:nth-child(2n+1) > td {
+  background-color: var(--background-color);
+}
+table caption {
+  margin: 0;
+  padding: 3px 0 3px 1em;
+}
+table p {
+  margin: 0;
+}
+
+/* pilcrow */
+a.pilcrow {
+  margin-left: 3px;
+  opacity: 0.2;
+  user-select: none;
+}
+a.pilcrow[href] { color: var(--pilcrow-weak); }
+a.pilcrow[href]:hover { text-decoration: none; }
+@media not print {
+  :hover > a.pilcrow {
+    opacity: 1;
+  }
+  a.pilcrow[href]:hover {
+    color: var(--pilcrow-strong);
+    background-color: transparent;
+  }
+}
+@media print {
+  a.pilcrow {
+    display: none;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid var(--line-color);
+}
+.bcp14 {
+  font-variant: small-caps;
+}
+
+.role {
+  font-variant: all-small-caps;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: var(--small-font-size);
+  line-height: 18px;
+  --identifier-width: 8em;
+}
+#identifiers dt {
+  width: var(--identifier-width);
+  margin: 0;
+  clear: left;
+  float: left;
+  text-align: right;
+}
+#identifiers dd {
+  margin: 0 0 0 calc(1em + var(--identifier-width));
+  min-width: 5em;
+}
+#identifiers .authors .author {
+  display: inline-block;
+  margin-right: 1.5em;
+}
+#identifiers .authors .org {
+  font-style: italic;
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #999;
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+}
+.docInfo .prepared {
+  float: left;
+}
+.docInfo .prepared {
+  float: right;
+}
+
+/* table of contents */
+#toc {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+}
+#toc nav ul {
+  margin: 0 0.5em 0 0;
+  padding: 0;
+  list-style: none;
+}
+#toc nav li {
+  line-height: 1.3em;
+  margin: 0.75em 0;
+  padding-left: 1.2em;
+  text-indent: -1.2em;
+}
+#toc a.xref {
+  white-space: normal;
+}
+/* references */
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+.refInstance {
+  margin-bottom: 1.25em;
+}
+
+.references .ascii {
+  margin-bottom: 0.25em;
+}
+
+/* index */
+.index ul {
+  margin: 0 0 0 1em;
+  padding: 0;
+  list-style: none;
+}
+.index ul ul {
+  margin: 0;
+}
+.index li {
+  margin: 0;
+  text-indent: -2em;
+  padding-left: 2em;
+  padding-bottom: 5px;
+}
+.indexIndex {
+  margin: 0.5em 0 1em;
+}
+.index a {
+  font-weight: 700;
+}
+/* make the index two-column on all but the smallest screens */
+@media (min-width: 500px) {
+  .index ul {
+    column-count: 2;
+    column-gap: 20px;
+  }
+  .index ul ul {
+    column-count: 1;
+    column-gap: 0;
+  }
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  margin: 1em 0;
+}
+address.vcard .nameRole {
+  font-weight: 700;
+  margin-left: 0;
+}
+address.vcard .label {
+  margin: 0.5em 0;
+}
+address.vcard .type {
+  display: none;
+}
+.alternative-contact {
+  margin: 1.5em 0 1em;
+}
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+@media (min-width: 500px) {
+  #authors-addresses > section {
+    column-count: 2;
+    column-gap: 20px;
+  }
+  #authors-addresses > section > h2 {
+    column-span: all;
+  }
+  /* hack for break-inside: avoid-column */
+  #authors-addresses address {
+    display: inline-block;
+    break-inside: avoid-column;
+  }
+}
+
+.rfcEditorRemove p:first-of-type {
+  font-style: italic;
+}
+.cref {
+  background-color: rgba(249, 232, 105, 0.3);
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+/* alternative layout for smaller screens */
+@media screen and (max-width: 929px) {
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 0;
+    margin: 0;
+    border-bottom: 1px solid #ccc;
+    opacity: 0.6;
+  }
+  #toc.active {
+      opacity: 1;
+  }
+  #toc h2 {
+    margin: 0;
+    padding: 2px 0 2px 6px;
+    padding-right: 1em;
+    font-size: 18px;
+    line-height: 24px;
+    min-width: 190px;
+    text-align: right;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+  }
+  #toc h2::before { /* css hamburger */
+    float: right;
+    position: relative;
+    width: 1em;
+    height: 1px;
+    left: -164px;
+    margin: 8px 0 0 0;
+    background: white none repeat scroll 0 0;
+    box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+    content: "";
+  }
+  #toc nav {
+    display: none;
+    background-color: var(--background-color);
+    padding: 0.5em 1em 1em;
+    overflow: auto;
+    overscroll-behavior: contain;
+    height: calc(100vh - 48px);
+    border-left: 1px solid #ddd;
+  }
+  #toc.active nav {
+    display: block;
+  }
+  /* Make the collapsed ToC header render white on gray also when it's a link */
+  #toc h2 a,
+  #toc h2 a:link,
+  #toc h2 a:focus,
+  #toc h2 a:hover,
+  #toc a.toplink,
+  #toc a.toplink:hover {
+    color: white;
+    background-color: #444;
+    text-decoration: none;
+  }
+  #toc a.toplink {
+    margin-top: 2px;
+  }
+}
+
+/* alternative layout for wide screens */
+@media screen and (min-width: 930px) {
+  body {
+    padding-right: 360px;
+    padding-right: calc(min(180px + 20%, 500px));
+  }
+  #toc {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    right: calc(50vw - 480px);
+    width: 312px;
+    margin: 0;
+    padding: 0;
+    z-index: 1;
+  }
+  #toc h2 {
+    margin: 0;
+    padding: 0.25em 1em 1em 0;
+  }
+  #toc nav {
+    display: block;
+    height: calc(90vh - 84px);
+    bottom: 0;
+    padding: 0.5em 0 2em;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  #toc nav > ul  {
+    margin-bottom: 2em;
+  }
+  #toc ul {
+    margin: 0 0 0 4px;
+    font-size: var(--small-font-size);
+  }
+  #toc ul p, #toc ul li {
+    margin: 2px 0;
+    line-height: 22px;
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc, #n-introduction {
+    page-break-before: always;
+  }
+  #toc {
+    border-top: none;
+    padding-top: 0;
+  }
+  figure, pre {
+    page-break-inside: avoid;
+  }
+  figure {
+    overflow: scroll;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  h2+*, h3+*, h4+*, h5+*, h6+* {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+}
+
+/* Changes introduced to fix issues found during implementation */
+
+/* Separate body from document info even without intervening H1 */
+section {
+  clear: both;
+}
+
+/* Top align author divs, to avoid names without organization dropping level with org names */
+.author {
+  vertical-align: top;
+}
+
+/* Style section numbers with more space between number and title */
+.section-number {
+  padding-right: 0.5em;
+}
+
+/* Add styling for a link in the ToC that points to the top of the document */
+a.toplink {
+  float: right;
+  margin: 8px 0.5em 0;
+}
+
+/* Fix the dl styling to match the RFC 7992 attributes */
+dl > dt,
+dl.dlParallel > dt {
+  float: left;
+  margin-right: 1em;
+}
+dl.dlNewline > dt {
+  float: none;
+}
+
+/* Provide styling for table cell text alignment */
+table .text-left, table .text-left {
+  text-align: left;
+}
+table .text-center, table .text-center {
+  text-align: center;
+}
+table .text-right, table .text-right {
+  text-align: right;
+}
+
+/* Make the alternative author contact information look less like just another
+   author, and group it closer with the primary author contact information */
+.alternative-contact {
+  margin: 0.5em 0 0.25em 0;
+}
+address .non-ascii {
+  margin: 0 0 0 2em;
+}
+
+/* With it being possible to set tables with alignment
+  left, center, and right, { width: 100%; } does not make sense */
+table {
+  width: auto;
+}
+
+/* Avoid reference text that sits in a block with very wide left margin,
+   because of a long floating dt label.*/
+.references dd {
+  overflow: visible;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+/* Limit the width of the author address vcard, so names in right-to-left
+   script don't end up on the other side of the page. */
+
+address.vcard {
+  max-width: 20em;
+  margin-right: auto;
+}
+
+/* For address alignment dependent on LTR or RTL scripts */
+address div.left {
+  text-align: left;
+}
+address div.right {
+  text-align: right;
+}
+
+/* Give the table caption label the same styling as the figcaption */
+
+@media print {
+  .toplink {
+    display: none;
+  }
+
+  /* avoid overwriting the top border line with the ToC header */
+  #toc {
+    padding-top: 1px;
+  }
+
+  /* Avoid page breaks inside dl and author address entries */
+  dd {
+    page-break-before: avoid;
+  }
+  .vcard {
+    page-break-inside: avoid;
+  }
+
+}
+/* Tweak the bcp14 keyword presentation */
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+</style>
+
+</head>
+<body>
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">AEAD Limits</td>
+<td class="right">February 2021</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">Günther, et al.</td>
+<td class="center">Expires 26 August 2021</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">Network Working Group</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-irtf-cfrg-aead-limits-latest</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2021-02-22" class="published">22 February 2021</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Informational</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2021-08-26">26 August 2021</time></dd>
+<dt class="label-authors">Authors:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">F. Günther</div>
+<div class="org">ETH Zurich</div>
+</div>
+<div class="author">
+      <div class="author-name">M. Thomson</div>
+<div class="org">Mozilla</div>
+</div>
+<div class="author">
+      <div class="author-name">C.A. Wood</div>
+<div class="org">Cloudflare</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">Usage Limits on AEAD Algorithms</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">An Authenticated Encryption with Associated Data (AEAD) algorithm provides
+confidentiality and integrity.  Excessive use of the same key can give an
+attacker advantages in breaking these properties.  This document provides simple
+guidance for users of common AEAD functions about how to limit the use of keys
+in order to bound the advantage given to an attacker.  It considers limits in
+both single- and multi-key settings.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+</section>
+<section class="note rfcEditorRemove" id="section-note.1">
+      <h2 id="name-discussion-venues">
+<a href="#name-discussion-venues" class="section-name selfRef">Discussion Venues</a>
+      </h2>
+<p id="section-note.1-1">This note is to be removed before publishing as an RFC.<a href="#section-note.1-1" class="pilcrow">¶</a></p>
+<p id="section-note.1-2">Source for this draft and an issue tracker can be found at
+  <span><a href="https://github.com/cfrg/draft-irtf-cfrg-aead-limits">https://github.com/cfrg/draft-irtf-cfrg-aead-limits</a></span>.<a href="#section-note.1-2" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 26 August 2021.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2021 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Simplified BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Simplified BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1" class="keepWithNext"><a href="#section-1" class="xref">1</a>.  <a href="#name-introduction" class="xref">Introduction</a><a href="#section-toc.1-1.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1" class="keepWithNext"><a href="#section-2" class="xref">2</a>.  <a href="#name-requirements-notation" class="xref">Requirements Notation</a><a href="#section-toc.1-1.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1" class="keepWithNext"><a href="#section-3" class="xref">3</a>.  <a href="#name-notation" class="xref">Notation</a><a href="#section-toc.1-1.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="xref">4</a>.  <a href="#name-calculating-limits" class="xref">Calculating Limits</a><a href="#section-toc.1-1.4.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="xref">5</a>.  <a href="#name-single-key-aead-limits" class="xref">Single-Key AEAD Limits</a><a href="#section-toc.1-1.5.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.5.2.1">
+                <p id="section-toc.1-1.5.2.1.1"><a href="#section-5.1" class="xref">5.1</a>.  <a href="#name-aead_aes_128_gcm-and-aead_a" class="xref">AEAD_AES_128_GCM and AEAD_AES_256_GCM</a><a href="#section-toc.1-1.5.2.1.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.5.2.1.2.1">
+                    <p id="section-toc.1-1.5.2.1.2.1.1"><a href="#section-5.1.1" class="xref">5.1.1</a>.  <a href="#name-confidentiality-limit" class="xref">Confidentiality Limit</a><a href="#section-toc.1-1.5.2.1.2.1.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.5.2.1.2.2">
+                    <p id="section-toc.1-1.5.2.1.2.2.1"><a href="#section-5.1.2" class="xref">5.1.2</a>.  <a href="#name-integrity-limit" class="xref">Integrity Limit</a><a href="#section-toc.1-1.5.2.1.2.2.1" class="pilcrow">¶</a></p>
+</li>
+                </ul>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.5.2.2">
+                <p id="section-toc.1-1.5.2.2.1"><a href="#section-5.2" class="xref">5.2</a>.  <a href="#name-aead_chacha20_poly1305" class="xref">AEAD_CHACHA20_POLY1305</a><a href="#section-toc.1-1.5.2.2.1" class="pilcrow">¶</a></p>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.5.2.3">
+                <p id="section-toc.1-1.5.2.3.1"><a href="#section-5.3" class="xref">5.3</a>.  <a href="#name-aead_aes_128_ccm" class="xref">AEAD_AES_128_CCM</a><a href="#section-toc.1-1.5.2.3.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.5.2.3.2.1">
+                    <p id="section-toc.1-1.5.2.3.2.1.1"><a href="#section-5.3.1" class="xref">5.3.1</a>.  <a href="#name-confidentiality-limit-2" class="xref">Confidentiality Limit</a><a href="#section-toc.1-1.5.2.3.2.1.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.5.2.3.2.2">
+                    <p id="section-toc.1-1.5.2.3.2.2.1"><a href="#section-5.3.2" class="xref">5.3.2</a>.  <a href="#name-integrity-limit-2" class="xref">Integrity Limit</a><a href="#section-toc.1-1.5.2.3.2.2.1" class="pilcrow">¶</a></p>
+</li>
+                </ul>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.5.2.4">
+                <p id="section-toc.1-1.5.2.4.1"><a href="#section-5.4" class="xref">5.4</a>.  <a href="#name-aead_aes_128_ccm_8" class="xref">AEAD_AES_128_CCM_8</a><a href="#section-toc.1-1.5.2.4.1" class="pilcrow">¶</a></p>
+</li>
+            </ul>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="xref">6</a>.  <a href="#name-multi-key-aead-limits" class="xref">Multi-Key AEAD Limits</a><a href="#section-toc.1-1.6.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.6.2.1">
+                <p id="section-toc.1-1.6.2.1.1"><a href="#section-6.1" class="xref">6.1</a>.  <a href="#name-aead_aes_128_gcm-and-aead_ae" class="xref">AEAD_AES_128_GCM and AEAD_AES_256_GCM</a><a href="#section-toc.1-1.6.2.1.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.6.2.1.2.1">
+                    <p id="section-toc.1-1.6.2.1.2.1.1"><a href="#section-6.1.1" class="xref">6.1.1</a>.  <a href="#name-authenticated-encryption-se" class="xref">Authenticated Encryption Security Limit</a><a href="#section-toc.1-1.6.2.1.2.1.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.6.2.1.2.2">
+                    <p id="section-toc.1-1.6.2.1.2.2.1"><a href="#section-6.1.2" class="xref">6.1.2</a>.  <a href="#name-confidentiality-limit-3" class="xref">Confidentiality Limit</a><a href="#section-toc.1-1.6.2.1.2.2.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.6.2.1.2.3">
+                    <p id="section-toc.1-1.6.2.1.2.3.1"><a href="#section-6.1.3" class="xref">6.1.3</a>.  <a href="#name-integrity-limit-3" class="xref">Integrity Limit</a><a href="#section-toc.1-1.6.2.1.2.3.1" class="pilcrow">¶</a></p>
+</li>
+                </ul>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.6.2.2">
+                <p id="section-toc.1-1.6.2.2.1"><a href="#section-6.2" class="xref">6.2</a>.  <a href="#name-aead_chacha20_poly1305-aead" class="xref">AEAD_CHACHA20_POLY1305, AEAD_AES_128_CCM, and AEAD_AES_128_CCM_8</a><a href="#section-toc.1-1.6.2.2.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.6.2.2.2.1">
+                    <p id="section-toc.1-1.6.2.2.2.1.1"><a href="#section-6.2.1" class="xref">6.2.1</a>.  <a href="#name-aead_chacha20_poly1305-2" class="xref">AEAD_CHACHA20_POLY1305</a><a href="#section-toc.1-1.6.2.2.2.1.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.6.2.2.2.2">
+                    <p id="section-toc.1-1.6.2.2.2.2.1"><a href="#section-6.2.2" class="xref">6.2.2</a>.  <a href="#name-aead_aes_128_ccm-and-aead_a" class="xref">AEAD_AES_128_CCM and AEAD_AES_128_CCM_8</a><a href="#section-toc.1-1.6.2.2.2.2.1" class="pilcrow">¶</a></p>
+</li>
+                </ul>
+</li>
+            </ul>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="xref">7</a>.  <a href="#name-security-considerations" class="xref">Security Considerations</a><a href="#section-toc.1-1.7.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="xref">8</a>.  <a href="#name-iana-considerations" class="xref">IANA Considerations</a><a href="#section-toc.1-1.8.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="xref">9</a>.  <a href="#name-references" class="xref">References</a><a href="#section-toc.1-1.9.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.9.2.1">
+                <p id="section-toc.1-1.9.2.1.1"><a href="#section-9.1" class="xref">9.1</a>.  <a href="#name-normative-references" class="xref">Normative References</a><a href="#section-toc.1-1.9.2.1.1" class="pilcrow">¶</a></p>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.9.2.2">
+                <p id="section-toc.1-1.9.2.2.1"><a href="#section-9.2" class="xref">9.2</a>.  <a href="#name-informative-references" class="xref">Informative References</a><a href="#section-toc.1-1.9.2.2.1" class="pilcrow">¶</a></p>
+</li>
+            </ul>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-appendix.a" class="xref"></a><a href="#name-authors-addresses" class="xref">Authors' Addresses</a><a href="#section-toc.1-1.10.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="introduction">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<p id="section-1-1">An Authenticated Encryption with Associated Data (AEAD) algorithm
+provides confidentiality and integrity. <span>[<a href="#RFC5116" class="xref">RFC5116</a>]</span> specifies an AEAD
+as a function with four inputs -- secret key, nonce, plaintext, associated data
+(of which plaintext and associated data can optionally be zero-length) -- that
+produces ciphertext output and an error code
+indicating success or failure. The ciphertext is typically composed of the encrypted
+plaintext bytes and an authentication tag.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">The generic AEAD interface does not describe usage limits.  Each AEAD algorithm
+does describe limits on its inputs, but these are formulated as strict
+functional limits, such as the maximum length of inputs, which are determined by
+the properties of the underlying AEAD composition.  Degradation of the security
+of the AEAD as a single key is used multiple times is not given a thorough
+treatment.<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-3">These limits might also be influenced by the number of "users" of
+a given key. In the traditional setting, there is one key shared between two
+parties. Any limits on the maximum length of inputs or encryption operations
+apply to that single key. The attacker's goal is to break security
+(confidentiality or integrity) of that specific key. However, in practice, there
+are often many users with independent keys. This multi-key security setting,
+often referred to as the multi-user setting in the academic literature,
+hence considers an attacker's advantage in breaking security of any of these many
+keys, further assuming the attacker may have done some offline work to help break
+security. As a result, AEAD algorithm limits may depend on offline work and the
+number of keys. However, given that a multi-key attacker does not target any specific
+key, acceptable advantages may differ from that of the single-key setting.<a href="#section-1-3" class="pilcrow">¶</a></p>
+<p id="section-1-4">The number of times a single pair of key and nonce can be used might also be
+relevant to security.  For some algorithms, such as AEAD_AES_128_GCM or
+AEAD_AES_256_GCM, this limit is 1 and using the same pair of key and nonce has
+serious consequences for both confidentiality and integrity; see
+<span>[<a href="#NonceDisrespecting" class="xref">NonceDisrespecting</a>]</span>.  Nonce-reuse resistant algorithms like
+AEAD_AES_128_GCM_SIV can tolerate a limited amount of nonce reuse.<a href="#section-1-4" class="pilcrow">¶</a></p>
+<p id="section-1-5">It is good practice to have limits on how many times the same key (or pair of
+key and nonce) are used.  Setting a limit based on some measurable property of
+the usage, such as number of protected messages or amount of data transferred,
+ensures that it is easy to apply limits.  This might require the application of
+simplifying assumptions.  For example, TLS 1.3 specifies limits on the number of
+records that can be protected, using the simplifying assumption that records are
+the same size; see Section 5.5 of <span>[<a href="#TLS" class="xref">TLS</a>]</span>.<a href="#section-1-5" class="pilcrow">¶</a></p>
+<p id="section-1-6">Currently, AEAD limits and usage requirements are scattered among peer-reviewed
+papers, standards documents, and other RFCs. Determining the correct limits for
+a given setting is challenging as papers do not use consistent labels or
+conventions, and rarely apply any simplifications that might aid in reaching a
+simple limit.<a href="#section-1-6" class="pilcrow">¶</a></p>
+<p id="section-1-7">The intent of this document is to collate all relevant information about the
+proper usage and limits of AEAD algorithms in one place.  This may serve as a
+standard reference when considering which AEAD algorithm to use, and how to use
+it.<a href="#section-1-7" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="requirements-notation">
+<section id="section-2">
+      <h2 id="name-requirements-notation">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-requirements-notation" class="section-name selfRef">Requirements Notation</a>
+      </h2>
+<p id="section-2-1">The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
+NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED",
+"MAY", and "OPTIONAL" in this document are to be interpreted as
+described in BCP 14 <span>[<a href="#RFC2119" class="xref">RFC2119</a>]</span> <span>[<a href="#RFC8174" class="xref">RFC8174</a>]</span> when, and only when, they
+appear in all capitals, as shown here.<a href="#section-2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="notation">
+<section id="section-3">
+      <h2 id="name-notation">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-notation" class="section-name selfRef">Notation</a>
+      </h2>
+<p id="section-3-1">This document defines limitations in part using the quantities below.<a href="#section-3-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-1">
+        <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
+<thead>
+          <tr>
+            <th class="text-right" rowspan="1" colspan="1">Symbol</th>
+            <th class="text-left" rowspan="1" colspan="1">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-right" rowspan="1" colspan="1">n</td>
+            <td class="text-left" rowspan="1" colspan="1">AEAD block length (in bits)</td>
+          </tr>
+          <tr>
+            <td class="text-right" rowspan="1" colspan="1">k</td>
+            <td class="text-left" rowspan="1" colspan="1">AEAD key length (in bits)</td>
+          </tr>
+          <tr>
+            <td class="text-right" rowspan="1" colspan="1">r</td>
+            <td class="text-left" rowspan="1" colspan="1">AEAD nonce length (in bits)</td>
+          </tr>
+          <tr>
+            <td class="text-right" rowspan="1" colspan="1">t</td>
+            <td class="text-left" rowspan="1" colspan="1">Size of the authentication tag (in bits)</td>
+          </tr>
+          <tr>
+            <td class="text-right" rowspan="1" colspan="1">l</td>
+            <td class="text-left" rowspan="1" colspan="1">Maximum length of each message (in blocks)</td>
+          </tr>
+          <tr>
+            <td class="text-right" rowspan="1" colspan="1">s</td>
+            <td class="text-left" rowspan="1" colspan="1">Total plaintext length in all messages (in blocks)</td>
+          </tr>
+          <tr>
+            <td class="text-right" rowspan="1" colspan="1">q</td>
+            <td class="text-left" rowspan="1" colspan="1">Number of protected messages (AEAD encryption invocations)</td>
+          </tr>
+          <tr>
+            <td class="text-right" rowspan="1" colspan="1">v</td>
+            <td class="text-left" rowspan="1" colspan="1">Number of attacker forgery attempts (failed AEAD decryption invocations)</td>
+          </tr>
+          <tr>
+            <td class="text-right" rowspan="1" colspan="1">p</td>
+            <td class="text-left" rowspan="1" colspan="1">Upper bound on adversary attack probability</td>
+          </tr>
+          <tr>
+            <td class="text-right" rowspan="1" colspan="1">o</td>
+            <td class="text-left" rowspan="1" colspan="1">Offline adversary work (in number of encryption and decryption queries; multi-key setting only)</td>
+          </tr>
+          <tr>
+            <td class="text-right" rowspan="1" colspan="1">u</td>
+            <td class="text-left" rowspan="1" colspan="1">Number of keys (multi-key setting only)</td>
+          </tr>
+          <tr>
+            <td class="text-right" rowspan="1" colspan="1">B</td>
+            <td class="text-left" rowspan="1" colspan="1">Maximum number of blocks encrypted by any key (multi-key setting only)</td>
+          </tr>
+        </tbody>
+      </table>
+<p id="section-3-3">For each AEAD algorithm, we define the (passive) confidentiality and (active)
+integrity advantage roughly as the advantage an attacker has in breaking the
+corresponding classical security property for the algorithm. A passive attacker
+can query ciphertexts for arbitrary plaintexts. An active attacker can additionally
+query plaintexts for arbitrary ciphertexts. Moreover, we define the combined
+authenticated encryption advantage guaranteeing both confidentiality and integrity
+against an active attacker. Specifically:<a href="#section-3-3" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-3-4.1">Confidentiality advantage (CA): The probability of a passive attacker
+succeeding in breaking the confidentiality properties (IND-CPA) of the AEAD scheme.
+In this document, the definition of confidentiality advantage roughly is the
+probability that an attacker successfully distinguishes the ciphertext outputs
+of the AEAD scheme from the outputs of a random function.<a href="#section-3-4.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-3-4.2">Integrity advantage (IA): The probability of a active attacker succeeding
+in breaking the integrity properties (INT-CTXT) of the AEAD scheme. In this document,
+the definition of integrity advantage roughly is the probability that an attacker
+is able to forge a ciphertext that will be accepted as valid.<a href="#section-3-4.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-3-4.3">Authenticated Encryption advantage (AEA): The probability of a active
+attacker succeeding in breaking the authenticated-encryption properties of the
+AEAD scheme. In this document, the definition of authenticated encryption
+advantage roughly is the probability that an attacker successfully distinguishes
+the ciphertext outputs of the AEAD scheme from the outputs of a random function
+or is able to forge a ciphertext that will be accepted as valid.<a href="#section-3-4.3" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="section-3-5">See <span>[<a href="#AEComposition" class="xref">AEComposition</a>]</span>, <span>[<a href="#AEAD" class="xref">AEAD</a>]</span> for the formal definitions of and relations
+between passive confidentiality (IND-CPA), ciphertext integrity (INT-CTXT),
+and authenticated encryption security (AE).
+The authenticated encryption advantage subsumes, and can be derived as the
+combination of, both CA and IA:<a href="#section-3-5" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-3-6">
+<pre>
+CA &lt;= AEA
+IA &lt;= AEA
+AEA &lt;= CA + IA
+</pre><a href="#section-3-6" class="pilcrow">¶</a>
+</div>
+<p id="section-3-7">Each application requires an individual determination of limits in order to keep CA
+and IA sufficiently small.  For instance, TLS aims to keep CA below 2^-60 and IA
+below 2^-57 (in the single-key setting). See <span>[<a href="#TLS" class="xref">TLS</a>]</span>, Section 5.5.<a href="#section-3-7" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="calculating-limits">
+<section id="section-4">
+      <h2 id="name-calculating-limits">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-calculating-limits" class="section-name selfRef">Calculating Limits</a>
+      </h2>
+<p id="section-4-1">Once upper bounds on CA, IA, or AEA are determined, this document
+defines a process for determining three overall operational limits:<a href="#section-4-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-4-2.1">Confidentiality limit (CL): The number of messages an application can encrypt
+before giving the adversary a confidentiality advantage higher than CA.<a href="#section-4-2.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-4-2.2">Integrity limit (IL): The number ciphertexts an application can decrypt,
+either successfully or not, before giving the adversary an integrity advantage
+higher than IA.<a href="#section-4-2.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-4-2.3">Authenticated encryption limit (AEL): The combined number of messages and
+number of ciphertexts an application can encrypt or decrypt before giving the
+adversary an authenticated encryption advantage higher than AEA.<a href="#section-4-2.3" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="section-4-3">When limits are expressed as a number of messages an application can encrypt or
+decrypt, this requires assumptions about the size of messages and any
+authenticated additional data (AAD).  Limits can instead be expressed in terms
+of the number of bytes, or blocks, of plaintext and maybe AAD in total.
+To aid in translating between message-based and byte/block-based limits,
+a formulation of limits that includes a maximum message size (l) and the AEAD
+schemes' block length in bits (n) is provided.<a href="#section-4-3" class="pilcrow">¶</a></p>
+<p id="section-4-4">All limits are based on the total number of messages, either the number of
+protected messages (q) or the number of forgery attempts (v); which correspond
+to CL and IL respectively.<a href="#section-4-4" class="pilcrow">¶</a></p>
+<p id="section-4-5">Limits are then derived from those bounds using a target attacker probability.
+For example, given an integrity advantage of <code>IA = v * (8l / 2^106)</code> and a
+targeted maximum attacker success probability of <code>IA = p</code>, the algorithm remains
+secure, i.e., the adversary's advantage does not exceed the targeted probability
+of success, provided that <code>v &lt;= (p * 2^106) / 8l</code>. In turn, this implies that
+<code>v &lt;= (p * 2^103) / l</code> is the corresponding limit.<a href="#section-4-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="su-limits">
+<section id="section-5">
+      <h2 id="name-single-key-aead-limits">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-single-key-aead-limits" class="section-name selfRef">Single-Key AEAD Limits</a>
+      </h2>
+<p id="section-5-1">This section summarizes the confidentiality and integrity bounds and limits for modern AEAD algorithms
+used in IETF protocols, including: AEAD_AES_128_GCM <span>[<a href="#RFC5116" class="xref">RFC5116</a>]</span>, AEAD_AES_256_GCM <span>[<a href="#RFC5116" class="xref">RFC5116</a>]</span>,
+AEAD_AES_128_CCM <span>[<a href="#RFC5116" class="xref">RFC5116</a>]</span>, AEAD_CHACHA20_POLY1305 <span>[<a href="#RFC8439" class="xref">RFC8439</a>]</span>, AEAD_AES_128_CCM_8 <span>[<a href="#RFC6655" class="xref">RFC6655</a>]</span>.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<p id="section-5-2">The CL and IL values bound the total number of encryption and forgery queries (q and v).
+Alongside each value, we also specify these bounds.<a href="#section-5-2" class="pilcrow">¶</a></p>
+<div id="aeadaes128gcm-and-aeadaes256gcm">
+<section id="section-5.1">
+        <h3 id="name-aead_aes_128_gcm-and-aead_a">
+<a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-aead_aes_128_gcm-and-aead_a" class="section-name selfRef">AEAD_AES_128_GCM and AEAD_AES_256_GCM</a>
+        </h3>
+<p id="section-5.1-1">The CL and IL values for AES-GCM are derived in <span>[<a href="#AEBounds" class="xref">AEBounds</a>]</span> and summarized below.
+For this AEAD, n = 128 and t = 128 <span>[<a href="#GCM" class="xref">GCM</a>]</span>. In this example, the length s is the sum
+of AAD and plaintext, as described in <span>[<a href="#GCMProofs" class="xref">GCMProofs</a>]</span>.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
+<div id="confidentiality-limit">
+<section id="section-5.1.1">
+          <h4 id="name-confidentiality-limit">
+<a href="#section-5.1.1" class="section-number selfRef">5.1.1. </a><a href="#name-confidentiality-limit" class="section-name selfRef">Confidentiality Limit</a>
+          </h4>
+<div class="artwork art-text alignLeft" id="section-5.1.1-1">
+<pre>
+CA &lt;= ((s + q + 1)^2) / 2^129
+</pre><a href="#section-5.1.1-1" class="pilcrow">¶</a>
+</div>
+<p id="section-5.1.1-2">This implies the following usage limit:<a href="#section-5.1.1-2" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-5.1.1-3">
+<pre>
+q + s &lt;= p^(1/2) * 2^(129/2) - 1
+</pre><a href="#section-5.1.1-3" class="pilcrow">¶</a>
+</div>
+<p id="section-5.1.1-4">Which, for a message-based protocol with <code>s &lt;= q * l</code>, if we assume that every
+packet is size <code>l</code>, produces the limit:<a href="#section-5.1.1-4" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-5.1.1-5">
+<pre>
+q &lt;= (p^(1/2) * 2^(129/2) - 1) / (l + 1)
+</pre><a href="#section-5.1.1-5" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="integrity-limit">
+<section id="section-5.1.2">
+          <h4 id="name-integrity-limit">
+<a href="#section-5.1.2" class="section-number selfRef">5.1.2. </a><a href="#name-integrity-limit" class="section-name selfRef">Integrity Limit</a>
+          </h4>
+<div class="artwork art-text alignLeft" id="section-5.1.2-1">
+<pre>
+IA &lt;= 2 * (v * (l + 1)) / 2^128
+</pre><a href="#section-5.1.2-1" class="pilcrow">¶</a>
+</div>
+<p id="section-5.1.2-2">This implies the following limit:<a href="#section-5.1.2-2" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-5.1.2-3">
+<pre>
+v &lt;= (p * 2^127) / (l + 1)
+</pre><a href="#section-5.1.2-3" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="aeadchacha20poly1305">
+<section id="section-5.2">
+        <h3 id="name-aead_chacha20_poly1305">
+<a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-aead_chacha20_poly1305" class="section-name selfRef">AEAD_CHACHA20_POLY1305</a>
+        </h3>
+<p id="section-5.2-1">The only known analysis for AEAD_CHACHA20_POLY1305 <span>[<a href="#ChaCha20Poly1305Bounds" class="xref">ChaCha20Poly1305Bounds</a>]</span>
+combines the confidentiality and integrity limits into a single expression,
+covered below:<a href="#section-5.2-1" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-5.2-2">
+<pre>
+CA &lt;= v * ((8 * l) / 2^106)
+IA &lt;= v * ((8 * l) / 2^106)
+</pre><a href="#section-5.2-2" class="pilcrow">¶</a>
+</div>
+<p id="section-5.2-3">This advantage is a tight reduction based on the underlying Poly1305 PRF <span>[<a href="#Poly1305" class="xref">Poly1305</a>]</span>.
+It implies the following limit:<a href="#section-5.2-3" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-5.2-4">
+<pre>
+v &lt;= (p * 2^103) / l
+</pre><a href="#section-5.2-4" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="aeadaes128ccm">
+<section id="section-5.3">
+        <h3 id="name-aead_aes_128_ccm">
+<a href="#section-5.3" class="section-number selfRef">5.3. </a><a href="#name-aead_aes_128_ccm" class="section-name selfRef">AEAD_AES_128_CCM</a>
+        </h3>
+<p id="section-5.3-1">The CL and IL values for AEAD_AES_128_CCM are derived from <span>[<a href="#CCM-ANALYSIS" class="xref">CCM-ANALYSIS</a>]</span>
+and specified in the QUIC-TLS mapping specification <span>[<a href="#I-D.ietf-quic-tls" class="xref">I-D.ietf-quic-tls</a>]</span>. This analysis uses the total
+number of underlying block cipher operations to derive its bound. For CCM, this number is the sum of:
+the length of the associated data in blocks, the length of the ciphertext in blocks, the length of
+the plaintext in blocks, plus 1.<a href="#section-5.3-1" class="pilcrow">¶</a></p>
+<p id="section-5.3-2">In the following limits, this is simplified to a value of twice the length of the packet in blocks,
+i.e., 2l represents the effective length, in number of block cipher operations, of a message with
+l blocks. This simplification is based on the observation that common applications of this AEAD carry
+only a small amount of associated data compared to ciphertext. For example, QUIC has 1 to 3 blocks of AAD.<a href="#section-5.3-2" class="pilcrow">¶</a></p>
+<p id="section-5.3-3">For this AEAD, n = 128 and t = 128.<a href="#section-5.3-3" class="pilcrow">¶</a></p>
+<div id="confidentiality-limit-1">
+<section id="section-5.3.1">
+          <h4 id="name-confidentiality-limit-2">
+<a href="#section-5.3.1" class="section-number selfRef">5.3.1. </a><a href="#name-confidentiality-limit-2" class="section-name selfRef">Confidentiality Limit</a>
+          </h4>
+<div class="artwork art-text alignLeft" id="section-5.3.1-1">
+<pre>
+CA &lt;= (2l * q)^2 / 2^n
+   &lt;= (2l * q)^2 / 2^128
+</pre><a href="#section-5.3.1-1" class="pilcrow">¶</a>
+</div>
+<p id="section-5.3.1-2">This implies the following limit:<a href="#section-5.3.1-2" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-5.3.1-3">
+<pre>
+q &lt;= sqrt((p * 2^126) / l^2)
+</pre><a href="#section-5.3.1-3" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="integrity-limit-1">
+<section id="section-5.3.2">
+          <h4 id="name-integrity-limit-2">
+<a href="#section-5.3.2" class="section-number selfRef">5.3.2. </a><a href="#name-integrity-limit-2" class="section-name selfRef">Integrity Limit</a>
+          </h4>
+<div class="artwork art-text alignLeft" id="section-5.3.2-1">
+<pre>
+IA &lt;= v / 2^t + (2l * (v + q))^2 / 2^n
+   &lt;= v / 2^128 + (2l * (v + q))^2 / 2^128
+</pre><a href="#section-5.3.2-1" class="pilcrow">¶</a>
+</div>
+<p id="section-5.3.2-2">This implies the following limit:<a href="#section-5.3.2-2" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-5.3.2-3">
+<pre>
+v + (2l * (v + q))^2 &lt;= p * 2^128
+</pre><a href="#section-5.3.2-3" class="pilcrow">¶</a>
+</div>
+<p id="section-5.3.2-4">In a setting where <code>v</code> or <code>q</code> is sufficiently large, <code>v</code> is negligible compared to
+<code>(2l * (v + q))^2</code>, so this this can be simplified to:<a href="#section-5.3.2-4" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-5.3.2-5">
+<pre>
+v + q &lt;= p^(1/2) * 2^63 / l
+</pre><a href="#section-5.3.2-5" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="aeadaes128ccm8">
+<section id="section-5.4">
+        <h3 id="name-aead_aes_128_ccm_8">
+<a href="#section-5.4" class="section-number selfRef">5.4. </a><a href="#name-aead_aes_128_ccm_8" class="section-name selfRef">AEAD_AES_128_CCM_8</a>
+        </h3>
+<p id="section-5.4-1">The analysis in <span>[<a href="#CCM-ANALYSIS" class="xref">CCM-ANALYSIS</a>]</span> also applies to this AEAD, but the reduced tag
+length of 64 bits changes the integrity limit calculation considerably.<a href="#section-5.4-1" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-5.4-2">
+<pre>
+IA &lt;= v / 2^t + (2l * (v + q))^2 / 2^n
+   &lt;= v / 2^64 + (2l * (v + q))^2 / 2^128
+</pre><a href="#section-5.4-2" class="pilcrow">¶</a>
+</div>
+<p id="section-5.4-3">This results in reducing the limit on <code>v</code> by a factor of 2^64.<a href="#section-5.4-3" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-5.4-4">
+<pre>
+v * 2^64 + (2l * (v + q))^2 &lt;= p * 2^128
+</pre><a href="#section-5.4-4" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="mu-limits">
+<section id="section-6">
+      <h2 id="name-multi-key-aead-limits">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-multi-key-aead-limits" class="section-name selfRef">Multi-Key AEAD Limits</a>
+      </h2>
+<p id="section-6-1">In the multi-key setting, each user is assumed to have an independent and
+identically distributed key, though nonces may be re-used across users with some
+very small probability. The success probability in attacking one of these many
+independent keys can be generically bounded by the success probability of
+attacking a single key multiplied by the number of keys present <span>[<a href="#MUSecurity" class="xref">MUSecurity</a>]</span>, <span>[<a href="#GCM-MU" class="xref">GCM-MU</a>]</span>.
+Absent concrete multi-key bounds, this means the attacker advantage in the multi-key
+setting is the product of the single-key advantage and the number of keys.<a href="#section-6-1" class="pilcrow">¶</a></p>
+<p id="section-6-2">This section summarizes the confidentiality and integrity bounds and limits for
+the same algorithms as in <a href="#su-limits" class="xref">Section 5</a> for the multi-key setting. The CL
+and IL values bound the total number of encryption and forgery queries (q and v).
+Alongside each value, we also specify these bounds.<a href="#section-6-2" class="pilcrow">¶</a></p>
+<div id="aeadaes128gcm-and-aeadaes256gcm-1">
+<section id="section-6.1">
+        <h3 id="name-aead_aes_128_gcm-and-aead_ae">
+<a href="#section-6.1" class="section-number selfRef">6.1. </a><a href="#name-aead_aes_128_gcm-and-aead_ae" class="section-name selfRef">AEAD_AES_128_GCM and AEAD_AES_256_GCM</a>
+        </h3>
+<p id="section-6.1-1">Concrete multi-key bounds for AEAD_AES_128_GCM and AEAD_AES_256_GCM exist
+due to <span>[<a href="#GCM-MU2" class="xref">GCM-MU2</a>]</span>. AES-GCM without nonce
+randomization is also discussed in <span>[<a href="#GCM-MU2" class="xref">GCM-MU2</a>]</span>, though this section does not
+include those results as they do not apply to protocols such as TLS 1.3 <span>[<a href="#RFC8446" class="xref">RFC8446</a>]</span>.<a href="#section-6.1-1" class="pilcrow">¶</a></p>
+<p id="section-6.1-2">For this AEAD, n = 128, t = 128, and r = 96; the key length is k = 128 or k = 256.<a href="#section-6.1-2" class="pilcrow">¶</a></p>
+<div id="authenticated-encryption-security-limit">
+<section id="section-6.1.1">
+          <h4 id="name-authenticated-encryption-se">
+<a href="#section-6.1.1" class="section-number selfRef">6.1.1. </a><a href="#name-authenticated-encryption-se" class="section-name selfRef">Authenticated Encryption Security Limit</a>
+          </h4>
+<div class="artwork art-text alignLeft" id="section-6.1.1-1">
+<pre>
+AEA &lt;= ((q+v)*l*B / 2^127) + (1 / 2^48)
+</pre><a href="#section-6.1.1-1" class="pilcrow">¶</a>
+</div>
+<p id="section-6.1.1-2">This implies the following limit:<a href="#section-6.1.1-2" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-6.1.1-3">
+<pre>
+q + v &lt;= (p * 2^127 - 2^79) / (l * B)
+</pre><a href="#section-6.1.1-3" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="confidentiality-limit-2">
+<section id="section-6.1.2">
+          <h4 id="name-confidentiality-limit-3">
+<a href="#section-6.1.2" class="section-number selfRef">6.1.2. </a><a href="#name-confidentiality-limit-3" class="section-name selfRef">Confidentiality Limit</a>
+          </h4>
+<p id="section-6.1.2-1">The confidentiality advantage is essentially dominated by the same terms as
+the AE advantage:<a href="#section-6.1.2-1" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-6.1.2-2">
+<pre>
+CA &lt;= (q*l*B / 2^127) + (1 / 2^48)
+</pre><a href="#section-6.1.2-2" class="pilcrow">¶</a>
+</div>
+<p id="section-6.1.2-3">This implies the following limit:<a href="#section-6.1.2-3" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-6.1.2-4">
+<pre>
+q &lt;= (p * 2^127 - 2^79) / (l * B)
+</pre><a href="#section-6.1.2-4" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="integrity-limit-2">
+<section id="section-6.1.3">
+          <h4 id="name-integrity-limit-3">
+<a href="#section-6.1.3" class="section-number selfRef">6.1.3. </a><a href="#name-integrity-limit-3" class="section-name selfRef">Integrity Limit</a>
+          </h4>
+<p id="section-6.1.3-1">There is currently no dedicated integrity multi-key bound available for
+AEAD_AES_128_GCM and AEAD_AES_256_GCM. The AE limit can be used to derive
+an integrity limit as<a href="#section-6.1.3-1" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-6.1.3-2">
+<pre>
+IA &lt;= AEA &lt;= (q+v)*l*B / 2^127 + 1/2^48
+</pre><a href="#section-6.1.3-2" class="pilcrow">¶</a>
+</div>
+<p id="section-6.1.3-3">This implies the following limit:<a href="#section-6.1.3-3" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-6.1.3-4">
+<pre>
+q + v &lt;= (p * 2^127 - 2^79) / (l * B)
+</pre><a href="#section-6.1.3-4" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="aeadchacha20poly1305-aeadaes128ccm-and-aeadaes128ccm8">
+<section id="section-6.2">
+        <h3 id="name-aead_chacha20_poly1305-aead">
+<a href="#section-6.2" class="section-number selfRef">6.2. </a><a href="#name-aead_chacha20_poly1305-aead" class="section-name selfRef">AEAD_CHACHA20_POLY1305, AEAD_AES_128_CCM, and AEAD_AES_128_CCM_8</a>
+        </h3>
+<p id="section-6.2-1">There are currently no concrete multi-key bounds for AEAD_CHACHA20_POLY1305,
+AEAD_AES_128_CCM, or AEAD_AES_128_CCM_8. Thus, to account for the additional
+factor <code>u</code>, i.e., the number of keys, each <code>p</code> term in the confidentiality and
+integrity limits is replaced with <code>p / u</code>.<a href="#section-6.2-1" class="pilcrow">¶</a></p>
+<div id="aeadchacha20poly1305-1">
+<section id="section-6.2.1">
+          <h4 id="name-aead_chacha20_poly1305-2">
+<a href="#section-6.2.1" class="section-number selfRef">6.2.1. </a><a href="#name-aead_chacha20_poly1305-2" class="section-name selfRef">AEAD_CHACHA20_POLY1305</a>
+          </h4>
+<p id="section-6.2.1-1">The combined confidentiality and integrity limit for AEAD_CHACHA20_POLY1305 is
+as follows.<a href="#section-6.2.1-1" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-6.2.1-2">
+<pre>
+v &lt;= ((p / u) * 2^106) / 8l
+  &lt;= (p * 2^103) / (l * u)
+</pre><a href="#section-6.2.1-2" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="aeadaes128ccm-and-aeadaes128ccm8">
+<section id="section-6.2.2">
+          <h4 id="name-aead_aes_128_ccm-and-aead_a">
+<a href="#section-6.2.2" class="section-number selfRef">6.2.2. </a><a href="#name-aead_aes_128_ccm-and-aead_a" class="section-name selfRef">AEAD_AES_128_CCM and AEAD_AES_128_CCM_8</a>
+          </h4>
+<p id="section-6.2.2-1">The integrity limit for AEAD_AES_128_CCM is as follows.<a href="#section-6.2.2-1" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-6.2.2-2">
+<pre>
+v + q &lt;= (p / u)^(1/2) * 2^63 / l
+</pre><a href="#section-6.2.2-2" class="pilcrow">¶</a>
+</div>
+<p id="section-6.2.2-3">Likewise, the integrity limit for AEAD_AES_128_CCM_8 is as follows.<a href="#section-6.2.2-3" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-6.2.2-4">
+<pre>
+v * 2^64 + (2l * (v + q))^2 &lt;= (p / u) * 2^128
+</pre><a href="#section-6.2.2-4" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="sec-considerations">
+<section id="section-7">
+      <h2 id="name-security-considerations">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<p id="section-7-1">Many of the formulae in this document depend on simplifying assumptions,
+from differing models, which means that results are not universally applicable. When using this
+document to set limits, it is necessary to validate all these assumptions
+for the setting in which the limits might apply. In most cases, the goal is
+to use assumptions that result in setting a more conservative limit, but this
+is not always the case. As an example of one such simplification, this document
+defines v as the total number of failed decryption queries (that is, failed forgery
+attempts), whereas models usually count in v all forgery attempts.<a href="#section-7-1" class="pilcrow">¶</a></p>
+<p id="section-7-2">The CA and IL values defined in this document are upper bounds based on existing
+cryptographic research. Future analysis may introduce tighter bounds. Applications
+SHOULD NOT assume these bounds are rigid, and SHOULD accommodate changes. In
+particular, in two-party communication, one participant cannot regard apparent
+overuse of a key by other participants as being in error, when it could be that
+the other participant has better information about bounds.<a href="#section-7-2" class="pilcrow">¶</a></p>
+<p id="section-7-3">Note that the limits in this document apply to the adversary's ability to
+conduct a single successful forgery. For some algorithms and in some cases,
+an adversary's success probability in repeating forgeries may be noticeably
+larger than that of the first forgery. As an example, <span>[<a href="#MF05" class="xref">MF05</a>]</span> describes
+such multiple forgery attacks in the context of AES-GCM in more detail.<a href="#section-7-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="iana-considerations">
+<section id="section-8">
+      <h2 id="name-iana-considerations">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<p id="section-8-1">This document does not make any request of IANA.<a href="#section-8-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-9">
+      <h2 id="name-references">
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-references" class="section-name selfRef">References</a>
+      </h2>
+<section id="section-9.1">
+        <h3 id="name-normative-references">
+<a href="#section-9.1" class="section-number selfRef">9.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="AEAD">[AEAD]</dt>
+        <dd>
+<span class="refAuthor">Rogaway, P.</span>, <span class="refTitle">"Authenticated-Encryption with Associated-Data"</span>, <time datetime="2002-09" class="refDate">September 2002</time>, <span>&lt;<a href="https://cseweb.ucsd.edu/~mihir/papers/musu.pdf">https://cseweb.ucsd.edu/~mihir/papers/musu.pdf</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="AEBounds">[AEBounds]</dt>
+        <dd>
+<span class="refAuthor">Luykx, A.</span><span class="refAuthor"> and K. Paterson</span>, <span class="refTitle">"Limits on Authenticated Encryption Use in TLS"</span>, <time datetime="2016-03-08" class="refDate">8 March 2016</time>, <span>&lt;<a href="http://www.isg.rhul.ac.uk/~kp/TLS-AEbounds.pdf">http://www.isg.rhul.ac.uk/~kp/TLS-AEbounds.pdf</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="AEComposition">[AEComposition]</dt>
+        <dd>
+<span class="refAuthor">Bellare, M.</span><span class="refAuthor"> and C. Namprempre</span>, <span class="refTitle">"Authenticated Encryption: Relations among notions and analysis of the generic composition paradigm"</span>, <time datetime="2007-07" class="refDate">July 2007</time>, <span>&lt;<a href="http://cseweb.ucsd.edu/~mihir/papers/oem.pdf">http://cseweb.ucsd.edu/~mihir/papers/oem.pdf</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="CCM-ANALYSIS">[CCM-ANALYSIS]</dt>
+        <dd>
+<span class="refAuthor">Jonsson, J.</span>, <span class="refTitle">"On the Security of CTR + CBC-MAC"</span>, <span class="seriesInfo">Selected Areas in Cryptography pp. 76-93</span>, <span class="seriesInfo">DOI 10.1007/3-540-36492-7_7</span>, <time datetime="2003" class="refDate">2003</time>, <span>&lt;<a href="https://doi.org/10.1007/3-540-36492-7_7">https://doi.org/10.1007/3-540-36492-7_7</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="ChaCha20Poly1305Bounds">[ChaCha20Poly1305Bounds]</dt>
+        <dd>
+<span class="refAuthor">Procter, G.</span>, <span class="refTitle">"A Security Analysis of the Composition of ChaCha20 and Poly1305"</span>, <time datetime="2014-08-11" class="refDate">11 August 2014</time>, <span>&lt;<a href="https://eprint.iacr.org/2014/613.pdf">https://eprint.iacr.org/2014/613.pdf</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="GCM">[GCM]</dt>
+        <dd>
+<span class="refAuthor">Dworkin, M.</span>, <span class="refTitle">"Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC"</span>, <span class="seriesInfo">NIST Special Publication 800-38D</span>, <time datetime="2007-11" class="refDate">November 2007</time>. </dd>
+<dd class="break"></dd>
+<dt id="GCM-MU">[GCM-MU]</dt>
+        <dd>
+<span class="refAuthor">Bellare, M.</span><span class="refAuthor"> and B. Tackmann</span>, <span class="refTitle">"The Multi-User Security of Authenticated Encryption: AES-GCM in TLS 1.3"</span>, <time datetime="2017-11-27" class="refDate">27 November 2017</time>, <span>&lt;<a href="https://eprint.iacr.org/2016/564.pdf">https://eprint.iacr.org/2016/564.pdf</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="GCM-MU2">[GCM-MU2]</dt>
+        <dd>
+<span class="refAuthor">Hoang, V.T.</span><span class="refAuthor">, Tessaro, S.</span><span class="refAuthor">, and A. Thiruvengadam</span>, <span class="refTitle">"The Multi-user Security of GCM, Revisited: Tight Bounds for Nonce Randomization"</span>, <time datetime="2018-10-15" class="refDate">15 October 2018</time>, <span>&lt;<a href="https://eprint.iacr.org/2018/993.pdf">https://eprint.iacr.org/2018/993.pdf</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="GCMProofs">[GCMProofs]</dt>
+        <dd>
+<span class="refAuthor">Iwata, T.</span><span class="refAuthor">, Ohashi, K.</span><span class="refAuthor">, and K. Minematsu</span>, <span class="refTitle">"Breaking and Repairing GCM Security Proofs"</span>, <time datetime="2012-08-01" class="refDate">1 August 2012</time>, <span>&lt;<a href="https://eprint.iacr.org/2012/438.pdf">https://eprint.iacr.org/2012/438.pdf</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="MUSecurity">[MUSecurity]</dt>
+        <dd>
+<span class="refAuthor">Bellare, M.</span><span class="refAuthor">, Boldyreva, A.</span><span class="refAuthor">, and S. Micali</span>, <span class="refTitle">"Public-Key Encryption in a Multi-user Setting: Security Proofs and Improvements"</span>, <time datetime="2000-05" class="refDate">May 2000</time>, <span>&lt;<a href="https://cseweb.ucsd.edu/~mihir/papers/musu.pdf">https://cseweb.ucsd.edu/~mihir/papers/musu.pdf</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="Poly1305">[Poly1305]</dt>
+        <dd>
+<span class="refAuthor">Bernstein, D.</span>, <span class="refTitle">"The Poly1305-AES Message-Authentication Code"</span>, <span class="seriesInfo">Fast Software Encryption pp. 32-49</span>, <span class="seriesInfo">DOI 10.1007/11502760_3</span>, <time datetime="2005" class="refDate">2005</time>, <span>&lt;<a href="https://doi.org/10.1007/11502760_3">https://doi.org/10.1007/11502760_3</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC2119">[RFC2119]</dt>
+        <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/rfc2119">https://datatracker.ietf.org/doc/html/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC5116">[RFC5116]</dt>
+        <dd>
+<span class="refAuthor">McGrew, D.</span>, <span class="refTitle">"An Interface and Algorithms for Authenticated Encryption"</span>, <span class="seriesInfo">RFC 5116</span>, <span class="seriesInfo">DOI 10.17487/RFC5116</span>, <time datetime="2008-01" class="refDate">January 2008</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/rfc5116">https://datatracker.ietf.org/doc/html/rfc5116</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC6655">[RFC6655]</dt>
+        <dd>
+<span class="refAuthor">McGrew, D.</span><span class="refAuthor"> and D. Bailey</span>, <span class="refTitle">"AES-CCM Cipher Suites for Transport Layer Security (TLS)"</span>, <span class="seriesInfo">RFC 6655</span>, <span class="seriesInfo">DOI 10.17487/RFC6655</span>, <time datetime="2012-07" class="refDate">July 2012</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/rfc6655">https://datatracker.ietf.org/doc/html/rfc6655</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8174">[RFC8174]</dt>
+        <dd>
+<span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/rfc8174">https://datatracker.ietf.org/doc/html/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8439">[RFC8439]</dt>
+      <dd>
+<span class="refAuthor">Nir, Y.</span><span class="refAuthor"> and A. Langley</span>, <span class="refTitle">"ChaCha20 and Poly1305 for IETF Protocols"</span>, <span class="seriesInfo">RFC 8439</span>, <span class="seriesInfo">DOI 10.17487/RFC8439</span>, <time datetime="2018-06" class="refDate">June 2018</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/rfc8439">https://datatracker.ietf.org/doc/html/rfc8439</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<section id="section-9.2">
+        <h3 id="name-informative-references">
+<a href="#section-9.2" class="section-number selfRef">9.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="I-D.ietf-quic-tls">[I-D.ietf-quic-tls]</dt>
+        <dd>
+<span class="refAuthor">Thomson, M.</span><span class="refAuthor"> and S. Turner</span>, <span class="refTitle">"Using TLS to Secure QUIC"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-quic-tls-34</span>, <time datetime="2021-01-14" class="refDate">14 January 2021</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-quic-tls-34.txt">https://datatracker.ietf.org/doc/html/draft-ietf-quic-tls-34.txt</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="MF05">[MF05]</dt>
+        <dd>
+<span class="refAuthor">McGrew, D.A.</span><span class="refAuthor"> and S.R. Fluhrer</span>, <span class="refTitle">"Multiple forgery attacks against Message Authentication Codes"</span>, <time datetime="2005-05-31" class="refDate">31 May 2005</time>, <span>&lt;<a href="https://csrc.nist.gov/CSRC/media/Projects/Block-Cipher-Techniques/documents/BCM/Comments/CWC-GCM/multi-forge-01.pdf">https://csrc.nist.gov/CSRC/media/Projects/Block-Cipher-Techniques/documents/BCM/Comments/CWC-GCM/multi-forge-01.pdf</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="NonceDisrespecting">[NonceDisrespecting]</dt>
+        <dd>
+<span class="refAuthor">Bock, H.</span><span class="refAuthor">, Zauner, A.</span><span class="refAuthor">, Devlin, S.</span><span class="refAuthor">, Somorovsky, J.</span><span class="refAuthor">, and P. Jovanovic</span>, <span class="refTitle">"Nonce-Disrespecting Adversaries -- Practical Forgery Attacks on GCM in TLS"</span>, <time datetime="2016-05-17" class="refDate">17 May 2016</time>, <span>&lt;<a href="https://eprint.iacr.org/2016/475.pdf">https://eprint.iacr.org/2016/475.pdf</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8446">[RFC8446]</dt>
+        <dd>
+<span class="refAuthor">Rescorla, E.</span>, <span class="refTitle">"The Transport Layer Security (TLS) Protocol Version 1.3"</span>, <span class="seriesInfo">RFC 8446</span>, <span class="seriesInfo">DOI 10.17487/RFC8446</span>, <time datetime="2018-08" class="refDate">August 2018</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/rfc8446">https://datatracker.ietf.org/doc/html/rfc8446</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="TLS">[TLS]</dt>
+      <dd>
+<span class="refAuthor">Rescorla, E.</span>, <span class="refTitle">"The Transport Layer Security (TLS) Protocol Version 1.3"</span>, <span class="seriesInfo">RFC 8446</span>, <span class="seriesInfo">DOI 10.17487/RFC8446</span>, <time datetime="2018-08" class="refDate">August 2018</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/rfc8446">https://datatracker.ietf.org/doc/html/rfc8446</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</section>
+<div id="authors-addresses">
+<section id="section-appendix.a">
+      <h2 id="name-authors-addresses">
+<a href="#name-authors-addresses" class="section-name selfRef">Authors' Addresses</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Felix Günther</span></div>
+<div dir="auto" class="left"><span class="org">ETH Zurich</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:mail@felixguenther.info" class="email">mail@felixguenther.info</a>
+</div>
+</address>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Martin Thomson</span></div>
+<div dir="auto" class="left"><span class="org">Mozilla</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:mt@lowentropy.net" class="email">mt@lowentropy.net</a>
+</div>
+</address>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Christopher A. Wood</span></div>
+<div dir="auto" class="left"><span class="org">Cloudflare</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:caw@heapingbits.net" class="email">caw@heapingbits.net</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>
