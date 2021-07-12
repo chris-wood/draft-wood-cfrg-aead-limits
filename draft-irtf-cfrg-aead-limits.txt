@@ -244,8 +244,8 @@ Table of Contents
 
    Each application requires an individual determination of limits in
    order to keep CA and IA sufficiently small.  For instance, TLS aims
-   to keep CA below 2^-60 and IA below 2^-57 (in the single-key
-   setting).  See [TLS], Section 5.5.
+   to keep CA below 2^-60 and IA below 2^-57 in the single-key setting;
+   see Section 5.5 of [TLS].
 
 4.  Calculating Limits
 
@@ -455,14 +455,20 @@ Table of Contents
 6.1.  AEAD_AES_128_GCM and AEAD_AES_256_GCM
 
    Concrete multi-key bounds for AEAD_AES_128_GCM and AEAD_AES_256_GCM
-   exist due to [GCM-MU2].  AES-GCM without nonce randomization is also
-   discussed in [GCM-MU2], though this section does not include those
-   results as they do not apply to protocols such as TLS 1.3 [RFC8446].
+   exist due to Theorem 4.3 in [GCM-MU2], which covers protocols with
+   nonce randomization, like TLS 1.3 [TLS] and QUIC [RFC9001].
+
+   Results for AES-GCM without nonce randomization are captured by
+   Theorem 3.1 in [GCM-MU2], which apply to protocols such as TLS 1.2
+   [RFC5246].  This produces similar limits under most conditions.
 
    For this AEAD, n = 128, t = 128, and r = 96; the key length is k =
-   128 or k = 256.
+   128 or k = 256 for AEAD_AES_128_GCM and AEAD_AES_128_GCM
+   respectively.
 
 6.1.1.  Authenticated Encryption Security Limit
+
+   Protocols with nonce randomization have a limit of:
 
    AEA <= ((q+v)*l*B / 2^127) + (1 / 2^48)
 
@@ -470,10 +476,24 @@ Table of Contents
 
    q + v <= (p * 2^127 - 2^79) / (l * B)
 
+   This assumes that B is much larger than 100; that is, each user
+   enciphers significantly more than 1600 bytes of data.  Otherwise, B
+   should be increased by 161 for AEAD_AES_128_GCM and by 97 for
+   AEAD_AES_256_GCM.
+
+   Protocols without nonce randomization have limits that are
+   essentially the same provided that p is not less than 2^-48, as the
+   simplified expression for AEA does not include the 2^-48 term:
+
+   q + v <= p * 2^127 / (l * B)
+
+   Without nonce randomization, B should be increased by an additional
+   0.5.
+
 6.1.2.  Confidentiality Limit
 
    The confidentiality advantage is essentially dominated by the same
-   terms as the AE advantage:
+   terms as the AE advantage for protocols with nonce randomization:
 
    CA <= (q*l*B / 2^127) + (1 / 2^48)
 
@@ -481,17 +501,19 @@ Table of Contents
 
    q <= (p * 2^127 - 2^79) / (l * B)
 
+   As before, the limit without nonce randomization is:
+
+   q <= (p * 2^127) / (l * B)
+
 6.1.3.  Integrity Limit
 
    There is currently no dedicated integrity multi-key bound available
    for AEAD_AES_128_GCM and AEAD_AES_256_GCM.  The AE limit can be used
-   to derive an integrity limit as
+   to derive an integrity limit as:
 
-   IA <= AEA <= (q+v)*l*B / 2^127 + 1/2^48
+   IA <= AEA
 
-   This implies the following limit:
-
-   q + v <= (p * 2^127 - 2^79) / (l * B)
+   Section 6.1.1 therefore contains the integrity limits.
 
 6.2.  AEAD_CHACHA20_POLY1305, AEAD_AES_128_CCM, and AEAD_AES_128_CCM_8
 
@@ -659,9 +681,14 @@ Table of Contents
               Forgery Attacks on GCM in TLS", 17 May 2016,
               <https://eprint.iacr.org/2016/475.pdf>.
 
-   [RFC8446]  Rescorla, E., "The Transport Layer Security (TLS) Protocol
-              Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018,
-              <https://datatracker.ietf.org/doc/html/rfc8446>.
+   [RFC5246]  Dierks, T. and E. Rescorla, "The Transport Layer Security
+              (TLS) Protocol Version 1.2", RFC 5246,
+              DOI 10.17487/RFC5246, August 2008,
+              <https://datatracker.ietf.org/doc/html/rfc5246>.
+
+   [RFC9001]  Thomson, M., Ed. and S. Turner, Ed., "Using TLS to Secure
+              QUIC", RFC 9001, DOI 10.17487/RFC9001, May 2021,
+              <https://datatracker.ietf.org/doc/html/rfc9001>.
 
    [TLS]      Rescorla, E., "The Transport Layer Security (TLS) Protocol
               Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018,
